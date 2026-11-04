@@ -1,0 +1,24 @@
+[project]
+name = "mechasmith"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Shreyas Subramanian", email = "shreyas.subramanian@scale.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "build123d>=0.13.0",
+    "manifold3d>=3.5.4",
+    "mujoco>=3.17.0",
+    "numpy>=2.5.4",
+    "pillow>=13.0.0",
+    "trimesh>=5.2.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.24,<0.12.0"]
+build-backend = "uv_build"
+
+[project.scripts]
+mechasmith = "mechasmith.cli:main"

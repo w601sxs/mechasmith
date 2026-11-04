@@ -1,0 +1,30 @@
+{
+  "source": "pollen-robotics/microduck_rl robot_groundcontact.xml",
+  "total_mass_g": 737.2431799999999,
+  "leg_mass_g": 129.04564000000002,
+  "head_neck_mass_g": 279.9274,
+  "trunk_mass_g": 199.22400000000002,
+  "hip_yaw_spacing_mm": 35.0,
+  "segments_mm": {
+    "hip_yaw->hip_roll": 20.70024154448445,
+    "hip_roll->hip_pitch": 31.100643080167963,
+    "hip_pitch->knee": 42.190056700720355,
+    "knee->ankle": 49.396356140913845
+  },
+  "hip_pitch_to_foot_mm": 95.15276620577033,
+  "hip_yaw_to_foot_mm": 112.13167401144953,
+  "link_mass_g": {
+    "hip_yaw": 23.0406,
+    "hip_roll": 6.18934,
+    "hip_pitch": 48.2067,
+    "knee": 21.5844,
+    "ankle": 30.0246
+  },
+  "actuator": {
+    "kp": 0.55,
+    "forcerange": 0.96,
+    "damping": 0.053,
+    "frictionloss": 0.0048,
+    "armature": 0.0018
+  }
+}
