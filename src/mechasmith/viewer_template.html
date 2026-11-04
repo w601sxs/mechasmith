@@ -1,0 +1,243 @@
+<meta charset="utf-8">
+<title>__ROBOT_NAME__ posing bench</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a workbench. The robot fills the stage; a narrow instrument panel of joint sliders sits beside it (below it on phones). */
+:root {
+  --bg: #e9edf1; --stage: #f4f6f8; --panel: #ffffff; --ink: #16202a; --muted: #5b6875;
+  --line: #d3dae1; --accent: #d9691a; --accent-ink: #ffffff; --ok: #237a4b; --warn: #b4410c; --grid: #c4ccd4;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0e1318; --stage: #131a21; --panel: #161e26; --ink: #e5eaef; --muted: #92a0ad;
+  --line: #27323c; --accent: #f08a35; --accent-ink: #1a0f05; --ok: #5cc28a; --warn: #f08a5d; --grid: #2a3540; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0e1318; --stage: #131a21; --panel: #161e26; --ink: #e5eaef; --muted: #92a0ad;
+  --line: #27323c; --accent: #f08a35; --accent-ink: #1a0f05; --ok: #5cc28a; --warn: #f08a5d; --grid: #2a3540; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--display); font-size: 14px; }
+.app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 0; }
+.stage { position: relative; background: var(--stage); min-width: 0; min-height: 0; }
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.hud { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 14px; right: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: none; }
+.hud h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 0 8px 0 0; }
+.chip { font-family: var(--mono); font-size: 12px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip.ok { color: var(--ok); border-color: currentColor; }
+.chip.warn { color: var(--warn); border-color: currentColor; }
+.pick { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); pointer-events: none; }
+.hint { position: absolute; right: 16px; bottom: 14px; font-size: 12px; color: var(--muted); pointer-events: none; }
+.panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding-block: 16px 24px; padding-left: 18px; padding-right: max(18px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+.poses { display: flex; flex-wrap: wrap; gap: 6px; }
+.poses button { font: 500 13px var(--display); padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.poses button:hover { border-color: var(--accent); }
+.poses button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.group { display: flex; flex-direction: column; gap: 10px; }
+.joint { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+.joint label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.joint output { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.joint input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); margin: 0; }
+.joint .lim { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; color: var(--warn); }
+.note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 58svh auto; height: auto; }
+  .panel { border-left: 0; border-top: 1px solid var(--line); overflow: visible; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .hint { display: none; }
+}
+</style>
+
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="view" aria-label="3D view of the robot. Drag to orbit, scroll to zoom."></canvas>
+    <div class="hud" id="hud"><h1>__ROBOT_NAME__</h1></div>
+    <div class="pick" id="pick">Click a part to name it</div>
+    <div class="hint">Drag to orbit · scroll to zoom · right-drag to pan</div>
+  </div>
+  <aside class="panel" id="panel">
+    <section><p class="label">Poses</p><div class="poses" id="poses"></div></section>
+    <div id="groups"></div>
+    <p class="note">Ranges are the declared joint limits. A red line under a joint is the collision-free range the build's sweep measured; past it, parts overlap.</p>
+  </aside>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const DATA = __DATA__;
+(function () {
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // ---- STL parsing (binary) -------------------------------------------------
+  function parseSTL(b64) {
+    const bin = atob(b64), buf = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+    const dv = new DataView(buf.buffer), n = dv.getUint32(80, true);
+    const pos = new Float32Array(n * 9);
+    for (let i = 0; i < n; i++) {
+      const o = 84 + i * 50 + 12;
+      for (let k = 0; k < 9; k++) pos[i * 9 + k] = dv.getFloat32(o + k * 4, true);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.computeVertexNormals();
+    return g;
+  }
+
+  // ---- scene ------------------------------------------------------------------
+  const canvas = document.getElementById("view"), stage = document.getElementById("stage");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 1, 20000);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.65); sun.position.set(300, 600, 400); scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.25); fill.position.set(-400, 200, -300); scene.add(fill);
+
+  const world = new THREE.Group(); world.rotation.x = -Math.PI / 2; scene.add(world); // z-up -> y-up
+  const groups = {}, joints = [], meshes = [];
+  for (const b of DATA.bodies) {
+    const g = new THREE.Group();
+    const parent = b.parent ? groups[b.parent] : world;
+    const po = b.parent ? DATA.bodies.find((x) => x.name === b.parent).origin : [0, 0, 0];
+    g.position.set(b.origin[0] - po[0], b.origin[1] - po[1], b.origin[2] - po[2]);
+    parent.add(g); groups[b.name] = g;
+    for (const p of b.parts) {
+      const [r, gg, bb, a] = p.color;
+      const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(r, gg, bb), roughness: 0.6, metalness: 0.05,
+        transparent: a < 1, opacity: a });
+      const mesh = new THREE.Mesh(parseSTL(p.stl), mat);
+      mesh.userData = { part: p.name, body: b.name, mass: b.mass_g };
+      g.add(mesh); meshes.push(mesh);
+    }
+    if (b.joint) joints.push({ ...b.joint, group: g, axis3: new THREE.Vector3(...b.joint.axis), q: 0 });
+  }
+  const floor = new THREE.GridHelper(2000, 80, css("--grid"), css("--grid"));
+  scene.add(floor);
+
+  function applyPose() {
+    for (const j of joints) j.group.quaternion.setFromAxisAngle(j.axis3, j.q);
+    world.position.y = 0;
+    world.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(world);
+    world.position.y = -box.min.y; // rest the lowest point on the floor
+  }
+
+  // ---- camera orbit -------------------------------------------------------------
+  const target = new THREE.Vector3(), orbit = { az: 0.75, el: 0.32, dist: 600 };
+  function frame() {
+    applyPose(); world.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(world), size = box.getSize(new THREE.Vector3());
+    box.getCenter(target);
+    orbit.dist = Math.max(size.x, size.y, size.z) * 2.6;
+  }
+  function placeCamera() {
+    const c = Math.cos(orbit.el);
+    camera.position.set(target.x + orbit.dist * c * Math.sin(orbit.az), target.y + orbit.dist * Math.sin(orbit.el),
+      target.z + orbit.dist * c * Math.cos(orbit.az));
+    camera.lookAt(target);
+  }
+  let drag = null, moved = 0;
+  canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, pan: e.button === 2 || e.shiftKey }; moved = 0; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; moved += Math.abs(dx) + Math.abs(dy);
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.pan) {
+      const s = orbit.dist / canvas.clientHeight;
+      const right = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0), up = new THREE.Vector3().setFromMatrixColumn(camera.matrix, 1);
+      target.addScaledVector(right, -dx * s).addScaledVector(up, dy * s);
+    } else {
+      orbit.az -= dx * 0.008; orbit.el = Math.max(-0.2, Math.min(1.45, orbit.el + dy * 0.006));
+    }
+    render();
+  });
+  canvas.addEventListener("pointerup", (e) => { if (drag && moved < 4) pick(e); drag = null; });
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); orbit.dist *= Math.exp(e.deltaY * 0.001); render(); }, { passive: false });
+
+  const ray = new THREE.Raycaster(), pickEl = document.getElementById("pick");
+  function pick(e) {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera({ x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -((e.clientY - r.top) / r.height) * 2 + 1 }, camera);
+    const hit = ray.intersectObjects(meshes)[0];
+    pickEl.textContent = hit ? `${hit.object.userData.part}  ·  link ${hit.object.userData.body} (${hit.object.userData.mass} g)` : "Click a part to name it";
+  }
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); render();
+  }
+  function render() {
+    scene.background = new THREE.Color(css("--stage"));
+    placeCamera(); renderer.render(scene, camera);
+  }
+  new ResizeObserver(resize).observe(stage);
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  // ---- panel --------------------------------------------------------------------
+  const S = DATA.summary || {}, hud = document.getElementById("hud");
+  const chip = (text, cls) => { const s = document.createElement("span"); s.className = "chip " + (cls || ""); s.textContent = text; hud.appendChild(s); };
+  chip(`${joints.length} joints`);
+  if (S.mass_g != null) chip(`${Math.round(S.mass_g)} g`);
+  if (S.stand) chip(S.stand.stands ? `stands, settles ${S.stand.settled_pitch_deg}°` : "falls over", S.stand.stands ? "ok" : "warn");
+  if (S.home_collisions != null) chip(S.home_collisions ? `${S.home_collisions} collisions at home` : "no collisions at home", S.home_collisions ? "warn" : "ok");
+
+  const limited = S.limited || {};
+  const families = [["Left leg", (n) => n.startsWith("left_")], ["Right leg", (n) => n.startsWith("right_")], ["Neck and head", () => true]];
+  const used = new Set(), groupsEl = document.getElementById("groups"), inputs = {};
+  groupsEl.className = "group"; groupsEl.style.gap = "18px";
+  const deg = (r) => `${(r * 180 / Math.PI).toFixed(0)}°`;
+  for (const [title, test] of families) {
+    const js = joints.filter((j) => !used.has(j.name) && test(j.name));
+    if (!js.length) continue;
+    const sec = document.createElement("section"), g = document.createElement("div");
+    sec.innerHTML = `<p class="label">${title}</p>`; g.className = "group";
+    for (const j of js) {
+      used.add(j.name);
+      const row = document.createElement("div"); row.className = "joint";
+      const id = "j_" + j.name;
+      const short = j.name.replace(/^(left|right)_/, "").replace(/_/g, " ");
+      row.innerHTML = `<label for="${id}">${short}</label><output id="o_${j.name}">0°</output>` +
+        `<input type="range" id="${id}" min="${j.range[0]}" max="${j.range[1]}" step="0.005" value="0">` +
+        (limited[j.name] ? `<span class="lim">collision-free ${deg(limited[j.name][0])} to ${deg(limited[j.name][1])}</span>` : "");
+      g.appendChild(row);
+      const inp = row.querySelector("input"), out = row.querySelector("output");
+      inp.addEventListener("input", () => { j.q = +inp.value; out.textContent = deg(j.q); setActive(null); applyPose(); render(); });
+      inputs[j.name] = { inp, out, j };
+    }
+    sec.appendChild(g); groupsEl.appendChild(sec);
+  }
+
+  const posesEl = document.getElementById("poses"), poseBtns = {};
+  const allPoses = { zero: {}, ...DATA.poses };
+  function setActive(name) { for (const [k, b] of Object.entries(poseBtns)) b.setAttribute("aria-pressed", k === name ? "true" : "false"); }
+  let anim = null;
+  function goPose(name) {
+    const goal = allPoses[name] || {};
+    const start = joints.map((j) => j.q), end = joints.map((j) => goal[j.name] || 0);
+    setActive(name);
+    const t0 = performance.now(), dur = reduceMotion ? 0 : 450;
+    cancelAnimationFrame(anim);
+    const step = (t) => {
+      const u = dur ? Math.min(1, (t - t0) / dur) : 1, e = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      joints.forEach((j, i) => { j.q = start[i] + (end[i] - start[i]) * e; const r = inputs[j.name]; r.inp.value = j.q; r.out.textContent = deg(j.q); });
+      applyPose(); render();
+      if (u < 1) anim = requestAnimationFrame(step);
+    };
+    anim = requestAnimationFrame(step);
+  }
+  for (const name of Object.keys(allPoses)) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = name.replace(/_/g, " ");
+    b.addEventListener("click", () => goPose(name)); posesEl.appendChild(b); poseBtns[name] = b;
+  }
+
+  frame(); resize();
+  goPose(DATA.poses.home ? "home" : "zero");
+})();
+</script>

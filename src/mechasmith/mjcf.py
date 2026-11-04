@@ -79,12 +79,16 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
                               rgba=(0.9, 0.2, 0.2, 0.4))
             pm, _, _ = part.mass_properties()
             parts_meta.append({"name": part.name, "mesh": f"meshes/{fname}", "mass": pm,
-                               "material": part.material.name, "collision": part.collision})
+                               "material": part.material.name, "collision": part.collision,
+                               "color": list(part.color)})
 
         for sname, spos in link.sites.items():
             body.add_site(name=sname, pos=(np.asarray(spos) - origin) * 1e-3, group=3)
 
-        manifest["bodies"][link.name] = {"origin_mm": origin.tolist(), "mass": m, "parts": parts_meta}
+        manifest["bodies"][link.name] = {"origin_mm": origin.tolist(), "mass": m, "parts": parts_meta,
+                                         "parent": pj.parent.name if pj else None,
+                                         "joint": None if pj is None else {"name": pj.name, "axis": pj.axis.tolist(),
+                                                                          "range": list(pj.range)}}
         for j in robot.children(link):
             add_link(j.child, body, origin)
 

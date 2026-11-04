@@ -3,6 +3,10 @@
 Agent-first robot design: CAD as Python code → computed mass properties → MJCF → checks → renders, in one command.
 
 ```bash
+uv run mechasmith build designs/duck.py         # full 14-DOF duck: meshes, MJCF, sweeps, stand test, renders, viewer.html
+uv run python benchmarks/compare_duck.py build/duck     # axis-line placement and masses vs Microduck
+uv run python scripts/sweep_balance.py designs/duck.py battery_x 20,32,44   # CoM vs ankles per parameter value
+uv run python scripts/balance.py build/duck            # where the mass sits relative to the feet
 uv run mechasmith build designs/duck_leg.py     # writes build/duck_leg/{scene.xml, robot.xml, meshes/, views.png, report.json}
 uv run python benchmarks/compare_leg.py build/duck_leg   # compare against Microduck's reference numbers
 uv run python scripts/sweep_param.py designs/duck_leg.py foot_reach left_ankle 12,14,16
@@ -19,7 +23,24 @@ uv run python scripts/sweep_param.py designs/duck_leg.py foot_reach left_ankle 1
 - Mass and inertia come from the CAD solids, with a 3D-printing infill model for printed parts.
 - Exact mesh-boolean interference at the home pose, then a sweep of every joint reporting its usable range and the first parts that collide.
 - Contact-sheet renders of the home pose and any named `POSES`.
+- Floating-base robots get a stand test: hold `HOME` with the servos alone for 3 s, then report whether it
+  stays up, where it settles, per-servo torque load, the support margin, and whether servo stiffness alone
+  could hold the pose upright (`pd_stiffness_ratio`; below 1 means a balance controller is required).
+- `viewer.html`: a self-contained browser viewer with a slider per joint, the design's poses, and the
+  measured collision-free ranges.
+
+## Connectors
+`brackets.py` generates parts from servo frames: `u_bracket`, `horn_plate`, `l_bracket` (two perpendicular
+faces), `strap` (coplanar faces), `spacer` (facing faces) and `cover_plate` (ties several cases together).
+Servos can be mounted case-on-parent (`Servo.mount_on`) or horn-on-parent (`Servo.horn_on`, the
+"inverted" mounting Microduck uses to cluster servos on one link).
 
 ## Status
-Day 1: a 5-DOF duck-class leg (XL330 servos) with collision-free full joint ranges, compared against Pollen's Microduck.
-Next: mirrored legs, trunk, neck and head (14 DOF), standing in simulation, browser viewer.
+- Day 1: a 5-DOF duck-class leg (XL330 servos) with collision-free full joint ranges.
+- Day 2: `designs/duck.py`, a full 14-DOF duck with Microduck's joint names and axis signs. Every leg axis
+  lies within 0.3 mm of Microduck's; all joints but the knees and ankles keep their full declared range;
+  it stands on servos alone at Microduck's HOME pose (settling 19 degrees nose-down; Pollen's own model
+  falls over under the same test).
+- Known gaps: neck sits 16.6 mm higher than Microduck's; mass 464 g vs 737 g (no fasteners, bearings,
+  cables or speaker modelled); shells are simple ellipsoids and rounded boxes.
+- Next: lower neck mount, hardware mass budget, nicer shells, then RL training in microduck_rl.

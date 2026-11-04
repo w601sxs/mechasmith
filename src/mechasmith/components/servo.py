@@ -104,8 +104,34 @@ class Servo:
                 return pos if c > 0 else neg
         raise ValueError(f"{self.name}: direction {d} is not aligned with a case face")
 
+    @classmethod
+    def horn_on(cls, name, spec: ServoSpec, face: MountFace, body_dir):
+        """Place a servo so its horn sits flat on `face` (inverted mounting: the
+        case rides on the child link, the horn is bolted to the parent)."""
+        n = unit(face.normal)
+        return cls(name, spec, face.point + n * spec.horn_face, -n, body_dir)
+
     def horn_face(self) -> MountFace:
         return MountFace(self.anchor + self.axis * self.spec.horn_face, self.axis.copy())
+
+    def boss_face(self) -> MountFace:
+        return MountFace(self.anchor - self.axis * self.spec.horn_face, -self.axis)
+
+    def case_center(self) -> np.ndarray:
+        s = self.spec
+        return self.anchor + self.z * (s.case_above - s.case_below) / 2
+
+    def case_face(self, direction) -> MountFace:
+        """Centre of the case face whose outward normal is `direction` (axial faces
+        return the case face, not the horn/boss face)."""
+        d = unit(direction)
+        c = self.case_center()
+        s = self.spec
+        half = {0: s.case_half_axial, 1: s.case_width / 2, 2: (s.case_above + s.case_below) / 2}
+        for i, vec in enumerate((self.x, self.y, self.z)):
+            if abs(abs(float(np.dot(d, vec))) - 1) < 1e-6:
+                return MountFace(c + d * half[i], d)
+        raise ValueError(f"{self.name}: direction {d} is not aligned with a case face")
 
     # ---- parts -------------------------------------------------------------
     def _local(self, shape: Shape) -> Shape:

@@ -598,6 +598,7 @@ dependencies = [
     { name = "mujoco" },
     { name = "numpy" },
     { name = "pillow" },
+    { name = "scipy" },
     { name = "trimesh" },
 ]
 
@@ -608,6 +609,7 @@ requires-dist = [
     { name = "mujoco", specifier = ">=3.17.0" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "pillow", specifier = ">=13.0.0" },
+    { name = "scipy", specifier = ">=1.18.1" },
     { name = "trimesh", specifier = ">=5.2.0" },
 ]
 

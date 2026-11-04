@@ -40,6 +40,11 @@ ref = {
     "hip_pitch_to_foot_mm": float(np.linalg.norm(anchor["left_hip_pitch"] - foot) * 1000),
     "hip_yaw_to_foot_mm": float(np.linalg.norm(anchor["left_hip_yaw"] - foot) * 1000),
     "link_mass_g": {j: float(m.body_mass[m.body(b).id] * 1000) for j, b in zip(LEG, LEG_BODIES)},
+    "hip_origin_mm": ((anchor["left_hip_yaw"] + anchor["right_hip_yaw"]) / 2 * 1000).tolist(),
+    "joints": {m.joint(i).name: {"anchor_mm": ((d.xanchor[i] - (anchor["left_hip_yaw"] + anchor["right_hip_yaw"]) / 2) * 1000).tolist(),
+                                 "axis": d.xaxis[i].tolist(), "range": m.jnt_range[i].tolist()}
+               for i in range(1, m.njnt)},
+    "left_foot_mm": ((foot - (anchor["left_hip_yaw"] + anchor["right_hip_yaw"]) / 2) * 1000).tolist(),
     "actuator": {"kp": 0.55, "forcerange": 0.96, "damping": 0.053, "frictionloss": 0.0048, "armature": 0.0018},
 }
 out = Path(__file__).with_name("microduck_reference.json")

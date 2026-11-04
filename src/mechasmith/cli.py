@@ -11,10 +11,12 @@ import sys
 import time
 from pathlib import Path
 
-from . import checks, mjcf, render
+from . import checks, mjcf, render, sim, viewer
 
 
 def load_design(path: Path):
+    if str(path.parent.resolve()) not in sys.path:
+        sys.path.insert(0, str(path.parent.resolve()))  # designs can import each other
     spec = importlib.util.spec_from_file_location(path.stem, path)
     mod = importlib.util.module_from_spec(spec)
     sys.modules[path.stem] = mod
@@ -55,6 +57,14 @@ def main(argv=None):
     for name, pose in getattr(mod, "POSES", {}).items():
         report["renders"].append(str(render.contact_sheet(scene, out / f"pose_{name}.png", qpos=pose,
                                                           title=f"{robot.name}: {name}")))
+    if robot.floating:
+        st = sim.stand_test(scene, home)
+        final = st.pop("final_qpos")
+        report["stand"] = st
+        report["renders"].append(str(render.contact_sheet(
+            scene, out / "stand.png", full_qpos=final,
+            title=f"{robot.name}: after {st['seconds']} s holding HOME ({'standing' if st['stands'] else 'FELL'})")))
+    report["viewer"] = str(viewer.write_viewer(out, {"home": home, **getattr(mod, "POSES", {})}, report))
     report["timing_s"] = {"export": round(t_export, 1), "total": round(time.time() - t0, 1)}
     (out / "report.json").write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))

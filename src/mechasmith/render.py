@@ -32,9 +32,11 @@ def _camera(model, data, azimuth, elevation, zoom=1.0):
 
 
 def contact_sheet(scene_xml, out_png, qpos: dict | None = None, size=(560, 480), title: str = "",
-                  views=VIEWS, show_collision=False, zoom=1.0) -> Path:
+                  views=VIEWS, show_collision=False, zoom=1.0, full_qpos=None) -> Path:
     model = mujoco.MjModel.from_xml_path(str(scene_xml))
     data = mujoco.MjData(model)
+    if full_qpos is not None:
+        data.qpos[:] = full_qpos
     for name, val in (qpos or {}).items():
         data.qpos[model.jnt_qposadr[model.joint(name).id]] = val
     mujoco.mj_forward(model, data)
