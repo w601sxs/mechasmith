@@ -3,6 +3,8 @@
 Agent-first robot design: CAD as Python code → computed mass properties → MJCF → checks → renders, in one command.
 
 ```bash
+uv run mechasmith build designs/microduck.py    # Pollen's Microduck, reverse-engineered as code-CAD
+uv run python scripts/compare_render.py <reference scene.xml> build/microduck designs/microduck.py compare.png
 uv run mechasmith build designs/duck.py         # full 14-DOF duck: meshes, MJCF, sweeps, stand test, renders, viewer.html
 uv run python benchmarks/compare_duck.py build/duck     # axis-line placement and masses vs Microduck
 uv run python scripts/sweep_balance.py designs/duck.py battery_x 20,32,44   # CoM vs ankles per parameter value
@@ -43,4 +45,11 @@ Servos can be mounted case-on-parent (`Servo.mount_on`) or horn-on-parent (`Serv
   falls over under the same test).
 - Known gaps: neck sits 16.6 mm higher than Microduck's; mass 464 g vs 737 g (no fasteners, bearings,
   cables or speaker modelled); shells are simple ellipsoids and rounded boxes.
-- Next: lower neck mount, hardware mass budget, nicer shells, then RL training in microduck_rl.
+- Day 3: `designs/microduck.py` reverse-engineers Microduck's look (loaf head with face plate, lens ring
+  and window, orange band and jaw lobes; compact trunk with upright battery; teardrop thigh covers;
+  orange cup feet) from measured part boxes, section profiles and material colours. No Pollen meshes are
+  used. All 14 joint axes lie within 0.8 mm of Microduck's; it stands at HOME on servos alone (3 degrees,
+  20 mm margin) with a 100 g battery chosen by sweep. New shell helpers: `loft_body`/`loft_shell`
+  (lofted sections, optionally arched), `arch`, `profile_plate`.
+- Known gaps: 543 g vs 737 g; round hip-roll brackets and the fixed jaw servo are not modelled.
+- Next: RL training in microduck_rl with this MJCF.

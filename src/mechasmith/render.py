@@ -31,6 +31,19 @@ def _camera(model, data, azimuth, elevation, zoom=1.0):
     return cam
 
 
+def _rest_on_floor(model, data):
+    """Drop a floating robot so its lowest visible geometry touches z = 0."""
+    zmin = np.inf
+    for g in range(model.ngeom):
+        if model.geom_group[g] != 2 or model.geom_type[g] != mujoco.mjtGeom.mjGEOM_MESH:
+            continue
+        mid = model.geom_dataid[g]
+        v = model.mesh_vert[model.mesh_vertadr[mid]: model.mesh_vertadr[mid] + model.mesh_vertnum[mid]]
+        zmin = min(zmin, float((v @ data.geom_xmat[g].reshape(3, 3).T + data.geom_xpos[g])[:, 2].min()))
+    data.qpos[2] -= zmin
+    mujoco.mj_forward(model, data)
+
+
 def contact_sheet(scene_xml, out_png, qpos: dict | None = None, size=(560, 480), title: str = "",
                   views=VIEWS, show_collision=False, zoom=1.0, full_qpos=None) -> Path:
     model = mujoco.MjModel.from_xml_path(str(scene_xml))
@@ -40,12 +53,16 @@ def contact_sheet(scene_xml, out_png, qpos: dict | None = None, size=(560, 480),
     for name, val in (qpos or {}).items():
         data.qpos[model.jnt_qposadr[model.joint(name).id]] = val
     mujoco.mj_forward(model, data)
+    if full_qpos is None and model.njnt and model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE:
+        _rest_on_floor(model, data)
     opt = mujoco.MjvOption()
     opt.geomgroup[:] = 0
     opt.geomgroup[0] = opt.geomgroup[2] = 1
     if show_collision:
         opt.geomgroup[3] = 1
     w, h = size
+    model.vis.global_.offwidth = max(model.vis.global_.offwidth, w)
+    model.vis.global_.offheight = max(model.vis.global_.offheight, h)
     renderer = mujoco.Renderer(model, h, w)
     tiles = []
     for label, (az, el) in views.items():

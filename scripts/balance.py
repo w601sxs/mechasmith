@@ -20,7 +20,7 @@ d = mujoco.MjData(m)
 place_on_floor(m, d, pose)
 root = m.jnt_bodyid[0]
 com = d.subtree_com[root] * 1000
-soles = [g for g in range(m.ngeom) if m.geom_contype[g] and m.geom_bodyid[g] != 0]
+soles = [g for g in range(m.ngeom) if m.geom_contype[g] and m.geom_bodyid[g] != 0 and 'sole' in (m.geom(g).name or '')]
 pts = []
 for g in soles:
     mid = m.geom_dataid[g]
