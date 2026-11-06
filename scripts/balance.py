@@ -1,6 +1,6 @@
 """Static balance at a pose: CoM vs the feet, per-body mass moments (agent tool).
 
-usage: python scripts/balance.py build/duck [pose-name-from-design]
+usage: python scripts/balance.py build/microduck [pose-name-from-design]
 """
 import json
 import sys
@@ -14,7 +14,7 @@ from mechasmith.sim import place_on_floor
 
 build = Path(sys.argv[1])
 design = load_design(Path(json.loads((build / "report.json").read_text())["design"]))
-pose = getattr(design, "POSES", {}).get(sys.argv[2], {}) if len(sys.argv) > 2 else design.HOME
+pose = design.poses.get(sys.argv[2], {}) if len(sys.argv) > 2 else design.home
 m = mujoco.MjModel.from_xml_path(str(build / "scene.xml"))
 d = mujoco.MjData(m)
 place_on_floor(m, d, pose)

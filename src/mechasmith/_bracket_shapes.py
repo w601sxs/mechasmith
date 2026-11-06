@@ -1,15 +1,11 @@
-"""Parametric brackets that attach to servos.
-
-Each function returns (Part, MountFace): the bracket and the face the next
-component should be mounted on. Brackets are generated from the servo's own
-frame, so they stay correct when the servo moves.
-"""
+"""Bracket geometry (internal). Designs use the components in mechasmith.assembly,
+which wrap these shapes and give them connectors."""
 from __future__ import annotations
 
 import numpy as np
 from build123d import Align, Box, Circle, Plane, Pos, Rectangle, extrude
 
-from .components.servo import MountFace, Servo
+from .components.servo import MountFace, ServoGeometry as Servo
 from .core import Part
 from .frames import frame, unit
 from .materials import PLA, Material
@@ -89,17 +85,6 @@ def _plate_bounds(face: MountFace, t: float):
     return i, min(a, b), max(a, b)
 
 
-def strap(face_a: MountFace, face_b: MountFace, *, width: float = 19.0, thickness: float = 2.5,
-          name: str, material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0)) -> Part:
-    """Flat plate over two coplanar faces with the same normal (e.g. a shin plate
-    from the knee horn down to the ankle case)."""
-    i, lo_n, hi_n = _plate_bounds(face_a, thickness)
-    pts = np.array([face_a.point, face_b.point])
-    lo, hi = pts.min(0) - width / 2, pts.max(0) + width / 2
-    lo[i], hi[i] = lo_n, hi_n
-    return Part(name, _box_from_bounds(lo, hi), material, color)
-
-
 def l_bracket(face_a: MountFace, face_b: MountFace, *, width: float = 19.0, thickness: float = 2.5,
               name: str, material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0)) -> Part:
     """Two plates joined at a corner, one on each of two perpendicular faces."""
@@ -122,28 +107,3 @@ def l_bracket(face_a: MountFace, face_b: MountFace, *, width: float = 19.0, thic
     lo_b[k], hi_b[k] = k_lo, k_hi
     shape = _box_from_bounds(lo_a, hi_a) + _box_from_bounds(lo_b, hi_b)
     return Part(name, shape, material, color)
-
-
-def spacer(face_a: MountFace, face_b: MountFace, *, width: float = 19.0, name: str,
-           material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0)) -> Part:
-    """Solid block filling the gap between two parallel, facing faces."""
-    i = _axis_index(face_a.normal)
-    pa, pb = face_a.point, face_b.point
-    c = (pa + pb) / 2
-    lo, hi = c - width / 2, c + width / 2
-    lo[i], hi[i] = min(pa[i], pb[i]), max(pa[i], pb[i])
-    return Part(name, _box_from_bounds(lo, hi), material, color)
-
-
-def cover_plate(parts, normal, *, thickness: float = 2.5, margin: float = 1.0, name: str,
-                material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0)) -> Part:
-    """Plate over the outermost faces of `parts` on side `normal`, covering their
-    combined outline (ties several servo cases into one rigid link)."""
-    i = _axis_index(normal)
-    s = np.sign(np.asarray(normal, float)[i])
-    bbs = [p.shape.bounding_box() for p in parts]
-    lo = np.min([[b.min.X, b.min.Y, b.min.Z] for b in bbs], 0) - margin
-    hi = np.max([[b.max.X, b.max.Y, b.max.Z] for b in bbs], 0) + margin
-    edge = (hi[i] - margin) if s > 0 else (lo[i] + margin)
-    lo[i], hi[i] = (edge, edge + thickness) if s > 0 else (edge - thickness, edge)
-    return Part(name, _box_from_bounds(lo, hi), material, color)

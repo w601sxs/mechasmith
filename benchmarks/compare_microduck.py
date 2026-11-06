@@ -1,6 +1,6 @@
-"""Compare a built full duck against Microduck's reference numbers.
+"""Compare a built full robot against Microduck's reference numbers.
 
-usage: python benchmarks/compare_duck.py build/duck
+usage: python benchmarks/compare_microduck.py build/microduck
 
 Joint placement is compared as axis LINES, not anchor points: an anchor can sit
 anywhere along its axis, so the meaningful error is how far our axis line is
@@ -14,7 +14,7 @@ import mujoco
 import numpy as np
 
 ref = json.loads(Path(__file__).with_name("microduck_reference.json").read_text())
-build = Path(sys.argv[1] if len(sys.argv) > 1 else "build/duck")
+build = Path(sys.argv[1] if len(sys.argv) > 1 else "build/microduck")
 m = mujoco.MjModel.from_xml_path(str(build / "scene.xml"))
 d = mujoco.MjData(m)
 mujoco.mj_forward(m, d)

@@ -11,7 +11,7 @@ from mechasmith.cli import load_design
 from mechasmith.render import contact_sheet
 
 ref_xml, build, design, out = sys.argv[1], Path(sys.argv[2]), Path(sys.argv[3]), Path(sys.argv[4])
-home = getattr(load_design(design), "HOME", {})
+home = load_design(design).home
 V = {"side": (270, -5), "front-iso": (200, -15), "front": (180, -5), "back-iso": (30, -30)}
 W, H = 360, 420
 

@@ -13,12 +13,10 @@ from mechasmith.cli import load_design
 
 design, param, joint = sys.argv[1], sys.argv[2], sys.argv[3]
 values = [float(v) for v in sys.argv[4].split(",")]
-mod = load_design(Path(design))
+dz = load_design(Path(design))
 for v in values:
-    p = dict(mod.P)
-    p[param] = v
     with tempfile.TemporaryDirectory() as d:
-        scene = mjcf.export(mod.build(p=p), Path(d))
-        r = interference_report(scene, steps=40)
+        scene = mjcf.export(dz.build(**{param: v}), Path(d))
+        r = interference_report(scene, steps=40, base_pose=dz.home)
         j = r["joints"][joint]
         print(json.dumps({param: v, "usable": j["usable"], "home_hits": len(r["home_collisions"])}), flush=True)

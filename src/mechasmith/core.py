@@ -1,4 +1,8 @@
-"""Core model: parts, links, joints, robots.
+"""The resolved robot model: links of placed parts, joined by joints.
+
+Designs do not build this by hand: `Assembly.robot()` produces it from connected
+components, and exporters and checks read it. `Robot.mirror` is the one method
+designs call directly.
 
 Conventions (the whole point is that an agent can reason in ONE frame):
   * Everything is authored in a single world frame at the robot's home pose.
@@ -9,10 +13,17 @@ Conventions (the whole point is that an agent can reason in ONE frame):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
-from build123d import CenterOf, Shape
+from build123d import CenterOf, Plane, Shape, mirror
+
+# Mirror planes: name -> (build123d plane, reflection matrix)
+MIRROR_PLANES = {
+    "XZ": (Plane.XZ, np.diag([1.0, -1.0, 1.0])),   # left <-> right
+    "YZ": (Plane.YZ, np.diag([-1.0, 1.0, 1.0])),   # front <-> back
+    "XY": (Plane.XY, np.diag([1.0, 1.0, -1.0])),   # top <-> bottom
+}
 
 from .materials import Material
 
@@ -39,6 +50,10 @@ class Part:
     color: tuple[float, float, float, float] = (0.8, 0.8, 0.8, 1.0)
     collision: bool = False            # also export as collision geometry
     mass_override: float | None = None # kg, for bought parts with known mass
+
+    def mirrored(self, name: str, plane: str = "XZ") -> "Part":
+        """Mirror image of this part across a world plane through the origin."""
+        return replace(self, name=name, shape=mirror(self.shape, about=MIRROR_PLANES[plane][0]))
 
     # ---- mass properties (SI) ------------------------------------------
     def mass_properties(self) -> tuple[float, np.ndarray, np.ndarray]:
@@ -102,7 +117,7 @@ class Robot:
         self.links: dict[str, Link] = {root.name: root}
         self.joints: list[Joint] = []
 
-    def joint(self, name, parent: Link, child: Link, anchor, axis, range, actuator=None) -> Joint:
+    def add_joint(self, name, parent: Link, child: Link, anchor, axis, range, actuator=None) -> Joint:
         if child.name in self.links:
             raise ValueError(f"link {child.name!r} already has a parent (kinematic tree only)")
         if parent.name not in self.links:
@@ -127,6 +142,50 @@ class Robot:
         """Body frame origin (world mm, home pose): the parent joint anchor, or 0 for root."""
         j = self.parent_joint(link)
         return np.zeros(3) if j is None else j.anchor
+
+    # ---- symmetry ------------------------------------------------------
+    def mirror(self, src: str = "left_", dst: str = "right_", plane: str = "XZ",
+               axes: str = "vector") -> "Robot":
+        """Copy everything named `src...` to its mirror image named `dst...`.
+
+        Mirrored: every link whose name starts with `src` (with its parts, sites and
+        parent joint), plus `src`-named parts and sites inside shared links such as the
+        trunk. Build one side, then call `robot.mirror()`.
+
+        axes="vector": the axis is reflected like a direction, so symmetric motion needs
+            opposite joint values (q_right = -q_left) and ranges flip to (-hi, -lo).
+            This is the URDF/ROS habit and what microduck_rl uses.
+        axes="pseudo": the axis is reflected as a rotation axis, so the same joint value
+            gives the mirror-image motion and ranges stay as they are.
+        """
+        if axes not in ("vector", "pseudo"):
+            raise ValueError("axes must be 'vector' or 'pseudo'")
+        _, M = MIRROR_PLANES[plane]
+
+        def rename(n: str) -> str:
+            return dst + n[len(src):] if n.startswith(src) else dst + n
+
+        def mpt(p) -> tuple:
+            return tuple(float(v) for v in M @ np.asarray(p, float))
+
+        if any(n.startswith(dst) for n in self.links):
+            raise ValueError(f"links named {dst!r}... already exist; mirror once")
+        # src-named parts and sites that live in shared links
+        for link in list(self.links.values()):
+            if link.name.startswith(src):
+                continue
+            link.parts += [p.mirrored(rename(p.name), plane) for p in link.parts if p.name.startswith(src)]
+            link.sites.update({rename(k): mpt(v) for k, v in link.sites.items() if k.startswith(src)})
+        # src links, in tree order so parents exist first
+        for j in [j for j in self.joints if j.child.name.startswith(src)]:
+            parent = self.links[rename(j.parent.name)] if j.parent.name.startswith(src) else j.parent
+            child = Link(rename(j.child.name), [p.mirrored(rename(p.name), plane) for p in j.child.parts],
+                         {rename(k): mpt(v) for k, v in j.child.sites.items()})
+            axis = M @ j.axis if axes == "vector" else -(M @ j.axis)
+            lo, hi = j.range
+            rng = (-hi, -lo) if axes == "vector" else (lo, hi)
+            self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator)
+        return self
 
     def total_mass(self) -> float:
         return sum(l.mass_properties()[0] for l in self.links.values())

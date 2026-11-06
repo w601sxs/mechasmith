@@ -1,7 +1,7 @@
 [project]
 name = "mechasmith"
 version = "0.1.0"
-description = "Add your description here"
+description = "Agent-first robot design: CAD as Python code to a checked, simulatable MuJoCo model"
 readme = "README.md"
 authors = [
     { name = "Shreyas Subramanian", email = "shreyas.subramanian@scale.com" }

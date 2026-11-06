@@ -21,6 +21,12 @@ def rounded_box(lo, hi, radius: float):
     return Pos(*((lo + hi) / 2)) * b
 
 
+def rounded_box_cavity(lo, hi, radius: float, wall: float):
+    """The empty inside of rounded_box_shell(...) with the same arguments."""
+    lo, hi = np.asarray(lo, float), np.asarray(hi, float)
+    return rounded_box(lo + wall, hi - wall, max(radius - wall, 0.5))
+
+
 def rounded_box_shell(lo, hi, radius: float, wall: float):
     lo, hi = np.asarray(lo, float), np.asarray(hi, float)
     return rounded_box(lo, hi, radius) - rounded_box(lo + wall, hi - wall, max(radius - wall, 0.5))
@@ -57,18 +63,24 @@ def loft_body(stations, bottom: float, radius: float = 12.0, bottom_radius: floa
     return loft(secs)
 
 
-def loft_shell(stations, bottom: float, wall: float, radius: float = 12.0, open_bottom: bool = True,
-               bottom_radius: float | None = None):
-    """Hollow version of loft_body with walls of `wall` mm (open underneath by default)."""
-    outer = loft_body(stations, bottom, radius, bottom_radius)
+def loft_cavity(stations, bottom: float, wall: float, radius: float = 12.0, open_bottom: bool = True,
+                bottom_radius: float | None = None):
+    """The empty inside of loft_shell(...) with the same arguments. Intersect a part with
+    it (`plate & cavity`) to make the part reach exactly to the shell's inner walls."""
     inner_st = [(x, hw - wall, top - wall) for x, hw, top in stations]
     # pull the end sections inward so the front and back stay closed
     (x0, hw0, t0), (x1, hw1, t1) = inner_st[0], inner_st[-1]
     inner_st[0] = (x0 + wall, hw0, t0)
     inner_st[-1] = (x1 - wall, hw1, t1)
-    inner = loft_body(inner_st, bottom - 50 if open_bottom else bottom + wall, max(radius - wall, 1.0),
-                      None if bottom_radius is None else max(bottom_radius - wall, 0.5))
-    return outer - inner
+    return loft_body(inner_st, bottom - 50 if open_bottom else bottom + wall, max(radius - wall, 1.0),
+                     None if bottom_radius is None else max(bottom_radius - wall, 0.5))
+
+
+def loft_shell(stations, bottom: float, wall: float, radius: float = 12.0, open_bottom: bool = True,
+               bottom_radius: float | None = None):
+    """Hollow version of loft_body with walls of `wall` mm (open underneath by default)."""
+    return (loft_body(stations, bottom, radius, bottom_radius)
+            - loft_cavity(stations, bottom, wall, radius, open_bottom, bottom_radius))
 
 
 def profile_plate(points_xz, y0: float, y1: float, round_r: float = 0.0):

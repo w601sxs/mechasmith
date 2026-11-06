@@ -1,10 +1,10 @@
-"""Smart servos as reusable components: geometry, mass and actuator model in one place.
+"""Servo specs (geometry, mass and fitted actuator model) and their shapes.
 
-Local servo frame (used only inside this module):
+Designs use `mechasmith.servo(name, XL330)`; this module holds the spec and the
+internal shape builder. Servo frame:
     +X  output axis, horn on the +X face, idler/back boss on the -X face
     +Z  toward the SHORT end of the case (the axis sits near this end)
     -Z  toward the long end of the case ("body direction")
-Callers place a servo with a world `axis` and a world `body_dir`.
 """
 from __future__ import annotations
 
@@ -62,13 +62,13 @@ XL330 = ServoSpec(
 
 @dataclass
 class MountFace:
-    """A flat face something can be mounted on: centre point (mm) + outward normal."""
+    """A flat face: centre point (mm) + outward normal."""
     point: np.ndarray
     normal: np.ndarray
 
 
-class Servo:
-    """A servo placed in the world at the home pose."""
+class ServoGeometry:
+    """Internal: servo case and horn shapes in a given frame. Designs use mechasmith.servo()."""
 
     def __init__(self, name: str, spec: ServoSpec, anchor, axis, body_dir):
         self.name = name
@@ -78,60 +78,6 @@ class Servo:
         self.body_dir = unit(body_dir)
         self.x, self.y, self.z = local_axes(self.axis, -self.body_dir)
         self.loc = frame(self.anchor, self.x, self.z)
-
-    # ---- placement -------------------------------------------------------
-    @classmethod
-    def mount_on(cls, name, spec: ServoSpec, face: MountFace, axis, body_dir, along_axis: float = 0.0):
-        """Place a servo so one case face sits flat on `face`.
-
-        The case face touching the mount is the one whose outward normal is
-        -face.normal; the anchor is pushed out from the face by that extent.
-        """
-        tmp = cls(name, spec, face.point, axis, body_dir)
-        d = tmp.case_extent(-face.normal)
-        anchor = face.point + unit(face.normal) * d + tmp.axis * along_axis
-        return cls(name, spec, anchor, axis, body_dir)
-
-    def case_extent(self, direction) -> float:
-        """Distance from the anchor to the case face whose outward normal is `direction`."""
-        d = unit(direction)
-        s = self.spec
-        for vec, pos, neg in ((self.x, s.case_half_axial, s.case_half_axial),
-                              (self.y, s.case_width / 2, s.case_width / 2),
-                              (self.z, s.case_above, s.case_below)):
-            c = float(np.dot(d, vec))
-            if abs(abs(c) - 1) < 1e-6:
-                return pos if c > 0 else neg
-        raise ValueError(f"{self.name}: direction {d} is not aligned with a case face")
-
-    @classmethod
-    def horn_on(cls, name, spec: ServoSpec, face: MountFace, body_dir):
-        """Place a servo so its horn sits flat on `face` (inverted mounting: the
-        case rides on the child link, the horn is bolted to the parent)."""
-        n = unit(face.normal)
-        return cls(name, spec, face.point + n * spec.horn_face, -n, body_dir)
-
-    def horn_face(self) -> MountFace:
-        return MountFace(self.anchor + self.axis * self.spec.horn_face, self.axis.copy())
-
-    def boss_face(self) -> MountFace:
-        return MountFace(self.anchor - self.axis * self.spec.horn_face, -self.axis)
-
-    def case_center(self) -> np.ndarray:
-        s = self.spec
-        return self.anchor + self.z * (s.case_above - s.case_below) / 2
-
-    def case_face(self, direction) -> MountFace:
-        """Centre of the case face whose outward normal is `direction` (axial faces
-        return the case face, not the horn/boss face)."""
-        d = unit(direction)
-        c = self.case_center()
-        s = self.spec
-        half = {0: s.case_half_axial, 1: s.case_width / 2, 2: (s.case_above + s.case_below) / 2}
-        for i, vec in enumerate((self.x, self.y, self.z)):
-            if abs(abs(float(np.dot(d, vec))) - 1) < 1e-6:
-                return MountFace(c + d * half[i], d)
-        raise ValueError(f"{self.name}: direction {d} is not aligned with a case face")
 
     # ---- parts -------------------------------------------------------------
     def _local(self, shape: Shape) -> Shape:
