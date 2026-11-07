@@ -15,7 +15,7 @@ def u_bracket(servo: Servo, toward, reach: float, *, name: str | None = None,
               thickness: float = 2.5, width: float | None = None, idler_gap: float = 0.4,
               material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0)) -> tuple[Part, MountFace]:
     """Classic servo U-bracket: one cheek bolted to the horn, one riding on the back
-    boss, joined by a bridge `reach` mm from the axis in direction `toward`.
+    boss (or just clear of the case if the servo has none), joined by a bridge `reach` mm from the axis in direction `toward`.
 
     `toward` must be perpendicular to the servo axis. Full rotation is collision
     free only if `reach` exceeds the case's swept radius; the sweep check reports
@@ -30,7 +30,7 @@ def u_bracket(servo: Servo, toward, reach: float, *, name: str | None = None,
 
     # Bracket-local frame: X = servo axis, Z = toward, origin at the servo anchor.
     x_horn = s.horn_face                 # horn-side cheek inner face (bolted, touching)
-    x_idle = -(s.horn_face + idler_gap)  # idler-side cheek inner face (running clearance)
+    x_idle = -(s.back_face + idler_gap)  # idler-side cheek inner face (running clearance)
     r = w / 2
 
     def cheek(x0: float, direction: int):

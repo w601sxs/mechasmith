@@ -128,3 +128,36 @@ def stand_test(scene_xml: Path, pose: dict, seconds: float = 3.0) -> dict:
                 if ratio < 1 else "servo stiffness alone can hold this pose upright",
         "final_qpos": h["qpos"].tolist(),
     }
+
+
+def arm_test(scene_xml: Path, pose: dict, tool_site: str, payload_kg: float = 0.0) -> dict:
+    """Static check for a fixed-base arm: the torque each servo needs to hold `pose`
+    (its own weight plus `payload_kg` at the tool site), how far the pose sags under
+    the servos' position gain, and the reach from the first joint to the tool."""
+    m = mujoco.MjModel.from_xml_path(str(scene_xml))
+    d = mujoco.MjData(m)
+    _set_joints(m, d, pose)
+    mujoco.mj_forward(m, d)                  # qvel = 0, so qfrc_bias is gravity only
+    sid = m.site(tool_site).id
+    jacp = np.zeros((3, m.nv))
+    mujoco.mj_jacSite(m, d, jacp, None, sid)
+    f_payload = np.array([0.0, 0.0, -payload_kg * 9.81])
+    tau = d.qfrc_bias - jacp.T @ f_payload   # what the actuators must supply
+    out = {"tool_site": tool_site, "payload_kg": payload_kg, "torque_nm": {}, "load": {}, "sag_rad": {}}
+    worst = (None, -1.0)
+    for i in range(m.nu):
+        j = m.actuator_trnid[i, 0]
+        t = float(tau[m.jnt_dofadr[j]])
+        load = abs(t) / m.actuator_forcerange[i, 1]
+        name = m.actuator(i).name
+        out["torque_nm"][name] = round(t, 3)
+        out["load"][name] = round(load, 2)
+        out["sag_rad"][name] = round(abs(t) / max(m.actuator_gainprm[i, 0], 1e-9), 3)
+        if load > worst[1]:
+            worst = (name, load)
+    first = m.jnt_bodyid[0]
+    out["reach_mm"] = round(float(np.linalg.norm(d.site_xpos[sid] - d.xanchor[0])) * 1000, 1)
+    out["tool_mm"] = [round(v * 1000, 1) for v in d.site_xpos[sid]]
+    out["worst_servo"] = {"name": worst[0], "load": round(worst[1], 2)}
+    out["holds"] = bool(worst[1] <= 1.0)
+    return out

@@ -79,6 +79,8 @@ class Design:
     home: dict[str, float] = field(default_factory=dict)
     poses: dict[str, dict[str, float]] = field(default_factory=dict)
     base_height: float | str = "auto"   # metres, or "auto" to rest the lowest geometry on z = 0
+    tool_site: str | None = None         # fixed-base arms: the end-effector site
+    payload_kg: float = 0.0              # arms: payload held at the tool site in the arm check
     doc: str = ""
 
     def resolve(self, **overrides) -> Params:
@@ -105,18 +107,22 @@ class Design:
             "params": {k: {"default": p.default, "range": p.range, "doc": p.doc} for k, p in self.params.items()},
             "home": self.home,
             "poses": sorted(self.poses),
+            "tool_site": self.tool_site,
+            "payload_kg": self.payload_kg,
         }
 
 
 def design(*, name: str | None = None, params: dict[str, Param] | None = None, home: dict | None = None,
-           poses: dict | None = None, base_height: float | str = "auto") -> Callable[[Callable], Design]:
+           poses: dict | None = None, base_height: float | str = "auto", tool_site: str | None = None,
+           payload_kg: float = 0.0) -> Callable[[Callable], Design]:
     """Decorator turning `build(p) -> Robot` into a Design."""
     def wrap(fn: Callable[[Params], Robot]) -> Design:
         import sys
         mod = fn.__module__.rsplit(".", 1)[-1]
         doc = fn.__doc__ or getattr(sys.modules.get(fn.__module__), "__doc__", None) or ""
         return Design(name=name or mod, build_fn=fn, params=dict(params or {}), home=dict(home or {}),
-                      poses=dict(poses or {}), base_height=base_height, doc=doc.strip())
+                      poses=dict(poses or {}), base_height=base_height, tool_site=tool_site,
+                      payload_kg=payload_kg, doc=doc.strip())
     return wrap
 
 

@@ -93,6 +93,8 @@ def main(argv=None):
         report["renders"].append(str(render.contact_sheet(
             scene, out / "stand.png", full_qpos=final,
             title=f"{robot.name}: after {st['seconds']} s holding HOME ({'standing' if st['stands'] else 'FELL'})")))
+    if not robot.floating and dz.tool_site:
+        report["arm"] = sim.arm_test(scene, home, dz.tool_site, dz.payload_kg)
     report["viewer"] = str(viewer.write_viewer(out, {"home": home, **dz.poses}, report))
     report["timing_s"] = {"export": round(t_export, 1), "total": round(time.time() - t0, 1)}
     (out / "report.json").write_text(json.dumps(report, indent=2))

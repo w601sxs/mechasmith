@@ -131,6 +131,18 @@ class Robot:
         self.joints.append(j)
         return j
 
+    def print_settings(self, infill: float | None = None, wall_mm: float | None = None,
+                       materials: tuple[str, ...] = ("PLA",)) -> "Robot":
+        """Reprint every printed part made of `materials` with another infill and/or wall
+        thickness (mass changes; geometry does not). Returns the robot, for chaining."""
+        from dataclasses import replace
+        changes = {k: v for k, v in (("infill", infill), ("wall_mm", wall_mm)) if v is not None}
+        for link in self.links.values():
+            for p in link.parts:
+                if p.material.printed and p.material.name in materials and changes:
+                    p.material = replace(p.material, **changes)
+        return self
+
     # ---- tree helpers --------------------------------------------------
     def parent_joint(self, link: Link) -> Joint | None:
         return next((j for j in self.joints if j.child is link), None)

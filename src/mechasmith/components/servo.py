@@ -31,11 +31,22 @@ class ServoSpec:
     actuator: ActuatorModel
     color: tuple = (0.17, 0.17, 0.18, 1.0)
     horn_color: tuple = (0.75, 0.75, 0.78, 1.0)
+    boss_thickness: float | None = None  # rear idler boss; None = same as the horn, 0 = no boss
 
     @property
     def horn_face(self) -> float:
-        """Axial distance from the anchor to the outer face of the horn / back boss."""
+        """Axial distance from the anchor to the outer face of the horn."""
         return self.case_half_axial + self.horn_thickness
+
+    @property
+    def boss(self) -> float:
+        """Thickness of the rear idler boss (0 if the servo has none)."""
+        return self.horn_thickness if self.boss_thickness is None else self.boss_thickness
+
+    @property
+    def back_face(self) -> float:
+        """Axial distance from the anchor to the rearmost face (boss, or the case if none)."""
+        return self.case_half_axial + self.boss
 
 
 # Dynamixel XL330 (as used on Microduck).
@@ -57,6 +68,29 @@ XL330 = ServoSpec(
         armature=0.0018, max_velocity=10.8,
         source="pollen-robotics/microduck_rl joints_properties.xml (chosen_actuator)",
     ),
+)
+
+
+# Feetech STS3215 (SO-100 / SO-101 arms, Open Duck Mini), 1/345 gearing.
+# Geometry: case 45.4 x 24.8 x 35 mm, output axis 10.2 mm from one end, Ø20 x 3.4 mm horn,
+# no rear boss (measured from the SO-ARM100 MJCF). Mass from the Feetech datasheet.
+# Actuator: SO-ARM100 joints_properties.xml, adapted from Open Duck Mini's fit.
+STS3215 = ServoSpec(
+    name="STS3215",
+    mass=0.055,
+    case_half_axial=17.5,
+    case_width=24.8,
+    case_above=10.2,
+    case_below=35.2,
+    horn_radius=10.0,
+    horn_thickness=3.4,
+    boss_thickness=0.0,
+    actuator=ActuatorModel(
+        kp=17.8, kv=0.0, forcerange=3.35, damping=0.60, frictionloss=0.052, armature=0.028,
+        max_velocity=4.7,
+        source="TheRobotStudio/SO-ARM100 Simulation/SO101/joints_properties.xml (from Open Duck Mini)",
+    ),
+    color=(0.1, 0.1, 0.1, 1.0),
 )
 
 
@@ -88,9 +122,10 @@ class ServoGeometry:
         s = self.spec
         h = s.case_above + s.case_below
         case = Pos(0, 0, (s.case_above - s.case_below) / 2) * Box(2 * s.case_half_axial, s.case_width, h)
-        boss = Pos(-s.case_half_axial, 0, 0) * Rot(0, -90, 0) * Cylinder(
-            s.horn_radius, s.horn_thickness, align=(Align.CENTER, Align.CENTER, Align.MIN))
-        return Part(f"{self.name}_case", self._local(case + boss), BOUGHT, s.color,
+        if s.boss > 0:
+            case = case + Pos(-s.case_half_axial, 0, 0) * Rot(0, -90, 0) * Cylinder(
+                s.horn_radius, s.boss, align=(Align.CENTER, Align.CENTER, Align.MIN))
+        return Part(f"{self.name}_case", self._local(case), BOUGHT, s.color,
                     mass_override=s.mass * 0.97)
 
     def horn_part(self) -> Part:

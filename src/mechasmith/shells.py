@@ -81,14 +81,3 @@ def loft_shell(stations, bottom: float, wall: float, radius: float = 12.0, open_
     """Hollow version of loft_body with walls of `wall` mm (open underneath by default)."""
     return (loft_body(stations, bottom, radius, bottom_radius)
             - loft_cavity(stations, bottom, wall, radius, open_bottom, bottom_radius))
-
-
-def profile_plate(points_xz, y0: float, y1: float, round_r: float = 0.0):
-    """Flat plate whose outline is a polygon in the XZ plane (rounded by `round_r`),
-    spanning y0..y1. Thigh covers, ear lobes, side panels."""
-    from build123d import Kind, Plane, Polygon, extrude, offset
-    face = Plane.XZ * Polygon(*[(x, z) for x, z in points_xz], align=None)
-    if round_r > 0:
-        face = offset(face, amount=round_r, kind=Kind.ARC)
-    # Plane.XZ extrudes toward -y; place it at y1 and extrude by the thickness
-    return Pos(0, y1, 0) * extrude(face, amount=y1 - y0)

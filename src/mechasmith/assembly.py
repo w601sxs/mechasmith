@@ -25,7 +25,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
-from build123d import Location, Plane, Shape, Vertex
+from build123d import Align, Location, Plane, Pos, Shape, Vertex
 
 from .components.servo import MountFace, ServoGeometry as Servo, ServoSpec
 from .core import ActuatorModel, Link, Part, Robot
@@ -163,7 +163,8 @@ class ServoUnit:
     +X is the output axis (horn side), +Z points to the short end of the case.
 
     Case connectors: short_end, long_end, side_pos (+Y), side_neg (-Y), back (axial face
-    on the boss side), boss (outer face of the back boss). Horn connector: face.
+    opposite the horn), and boss (outer face of the rear boss, if the servo has one).
+    Horn connector: face.
     """
     AXIS = np.array([1.0, 0, 0])   # output axis, servo frame
     BODY = np.array([0, 0, -1.0])  # toward the long end of the case, servo frame
@@ -178,8 +179,10 @@ class ServoUnit:
         X, Y, Z = np.eye(3)
         for nm, at, n, x in (("short_end", (0, 0, s.case_above), Z, X), ("long_end", (0, 0, -s.case_below), -Z, X),
                              ("side_pos", (0, s.case_width / 2, 0), Y, X), ("side_neg", (0, -s.case_width / 2, 0), -Y, X),
-                             ("back", (-s.case_half_axial, 0, 0), -X, Z), ("boss", (-s.horn_face, 0, 0), -X, Z)):
+                             ("back", (-s.case_half_axial, 0, 0), -X, Z)):
             self.case.connector(nm, at, n, x, check=False)
+        if s.boss > 0:
+            self.case.connector("boss", (-s.back_face, 0, 0), -X, Z, check=False)
         self.horn.connector("face", (s.horn_face, 0, 0), X, Z, check=False)
 
     @property
@@ -246,11 +249,24 @@ class Assembly:
                                   f"degrees away: the two connections disagree")
 
     # -- connections
-    def fasten(self, a: Conn, b: Conn, *, spin: tuple | None = None) -> Component:
+    def fasten(self, a: Conn, b: Conn, *, spin: tuple | None = None, at=None) -> Component:
         """Put b's connector face flat on a's. `spin=(b_vector, world_dir)` turns b about
-        the shared normal so a vector in b's own frame points as close to world_dir as it can."""
+        the shared normal so a vector in b's own frame points as close to world_dir as it can.
+        `at` (world mm) seats b at another point of a's face instead of at a's connector:
+        any coordinate along the normal is ignored, and the point must be on a's surface,
+        so the parts still touch."""
         self._require_placed(a.comp, f"fasten({a}, {b})")
         Wa = a.comp.pose @ a.frame_local()
+        if at is not None:
+            n = Wa[:3, 2]
+            target = np.asarray(at, float)
+            target = target - np.dot(target - Wa[:3, 3], n) * n      # onto the face plane
+            d = a.comp.world_shape.distance_to(Vertex(*target))
+            if d > AGREE_MM:
+                raise AttachmentError(f"fasten({a}, {b}): at={target.round(2).tolist()} is {d:.2f} mm off "
+                                      f"{a.comp.name}'s surface")
+            Wa = Wa.copy()
+            Wa[:3, 3] = target
         Wb = Wa @ _rot("x", np.pi)                      # opposed normals, matching x
         if spin is not None:
             v_local, target = np.asarray(spin[0], float), unit(spin[1])
@@ -302,9 +318,61 @@ class Assembly:
         child._world_shape = None
         self._register(child)
         axis = parent.direction(unit_.AXIS) * (-1 if reverse else 1)
+        unit_._joint = dict(range=tuple(range), sign=-1 if reverse else 1, case_parent=parent is case)
         self.edges.append(_Edge(parent, child, "joint", dict(
             name=name, anchor=parent.point((0, 0, 0)), axis=axis, range=tuple(range),
             actuator=actuator or unit_.spec.actuator, child_link=child_link or f"{name}_link")))
+
+    def lock(self, unit_: ServoUnit) -> None:
+        """A servo that is mounted but not simulated as a joint (a jaw, a gripper you do not
+        train): its horn is fixed to its case, so parts can still bolt to the horn."""
+        case, horn = unit_.case, unit_.horn
+        placed = [c for c in (case, horn) if c.pose is not None and c.name in self.components]
+        if not placed:
+            raise AttachmentError(f"lock: connect the case or the horn of {unit_.name} first")
+        other = horn if placed[0] is case else case
+        if other.pose is None:
+            other.pose = placed[0].pose.copy()
+            other._world_shape = None
+        self._register(other)
+        self.edges.append(_Edge(case, horn, "fixed"))
+
+    def link(self, name: str, *, around: ServoUnit | None = None, on: Component | None = None, path=None,
+             width: float = 24.0, holds=None, add=(), cut=(), clear=(), wall: float = 2.5, cheek: float = 4.0,
+             gap: float = 0.8, round: float = 2.0, material: Material = PLA, color=(0.93, 0.91, 0.86, 1.0),
+             collision: bool = False, bearing=None, back_cheek: bool = True) -> Component:
+        """A printed link (see mechasmith.links): a fork `around` a servo whose joint is already
+        declared (bolted to its horn, clear of its case over the joint range) and/or a walled
+        pocket that `holds` the next servo (seated by construction). Without `around`, give
+        `on`: the part it is attached to (contact checked). `bearing=(od, id, width)` presses a
+        bearing into the back cheek, riding on the servo's rear boss. `back_cheek=False` makes a
+        one-sided link (the servo's back is used by something else)."""
+        from .links import SWEEP_STEP, build_link
+        sweep = None
+        if around is not None:
+            if around.horn.pose is None or around.horn.name not in self.components:
+                raise AttachmentError(f"link {name}: declare the joint of {around.name} first, so the "
+                                      f"fork knows how far the servo turns")
+            j = getattr(around, "_joint", None)
+            if j is not None:
+                lo, hi = j["range"]
+                q = np.append(np.arange(lo, hi, SWEEP_STEP), hi)
+                sweep = (-1 if j["case_parent"] else 1) * j["sign"] * q
+        elif on is None:
+            raise AttachmentError(f"link {name}: say what it is attached to (around=servo or on=part)")
+        shape, hf, seat = build_link(name, around=around, sweep=sweep, path=path, width=width, holds=holds,
+                                     add=add, cut=cut, clear=clear, wall=wall, cheek=cheek, gap=gap, round=round,
+                                     bearing=bearing, back_cheek=back_cheek)
+        c = Component.world(name, shape, material, color, collision=collision)
+        if hf is not None:
+            c.connector("holds", hf[0], hf[1], hf[2], check=False)
+        self.attach(around.horn if around is not None else on, c)
+        if seat is not None:
+            from .links import bearing as _bearing
+            self.attach(c, _bearing(f"{name}_bearing", seat[0], seat[1], seat[2], seat[3], seat[4]))
+        if holds is not None:
+            self.fasten(c.c("holds"), holds.unit.case.c("back"))
+        return c
 
     # -- output
     def robot(self) -> Robot:
@@ -392,4 +460,37 @@ def l_bracket(name: str, a: MountFace, b: MountFace, b_x=None, **kw) -> Componen
     c = Component.world(name, part.shape, part.material, part.color)
     c.connector("a", a.point, -np.asarray(a.normal), _any_perp(a.normal), check=False)
     c.connector("b", b.point, -np.asarray(b.normal), _any_perp(b.normal) if b_x is None else b_x, check=False)
+    return c
+
+
+def servo_housing(spec: ServoSpec, name: str, wall: float = 2.5, front_wall: float | None = None,
+                  **kw) -> Component:
+    """Printed cup that holds a servo case (how most printed arms carry their motors), in
+    the servo's frame. It wraps the case on every side; the horn side has a round opening
+    for the horn, and its wall (`front_wall`, default min(wall, horn thickness - 0.5)) stays
+    clear of anything bolted to the horn.
+
+    Connectors: case (the inside of the back wall: fasten it to the servo case's `back`),
+    and the outer faces back, short_end, long_end, side_pos, side_neg, named and oriented
+    like the case's own, so `spin=(unit.AXIS, ...)` / `(unit.BODY, ...)` work unchanged.
+    Hang the chain on the housing's faces instead of the case's: everything stays touching.
+    """
+    from build123d import Cylinder, Rot
+    from .geom import box
+    s, w = spec, float(wall)
+    fw = min(w, s.horn_thickness - 0.5) if front_wall is None else float(front_wall)
+    if fw >= s.horn_thickness:
+        raise ValueError(f"servo_housing {name}: front_wall {fw} would reach past the horn face")
+    hx, hy = s.case_half_axial, s.case_width / 2
+    outer = box((-hx - w, -hy - w, -s.case_below - w), (hx + fw, hy + w, s.case_above + w))
+    inner = box((-hx, -hy, -s.case_below), (hx, hy, s.case_above))
+    hole = Pos(hx - 1, 0, 0) * Rot(0, 90, 0) * Cylinder(s.horn_radius + 1.5, fw + 2,
+                                                        align=(Align.CENTER, Align.CENTER, Align.MIN))
+    c = Component(name, outer - inner - hole, **kw)
+    X, Y, Z = np.eye(3)
+    c.connector("case", (-hx, 0, 0), X, Z, check=False)
+    for nm, at, n, x in (("short_end", (0, 0, s.case_above + w), Z, X), ("long_end", (0, 0, -s.case_below - w), -Z, X),
+                         ("side_pos", (0, hy + w, 0), Y, X), ("side_neg", (0, -hy - w, 0), -Y, X),
+                         ("back", (-hx - w, 0, 0), -X, Z)):
+        c.connector(nm, at, n, x, check=False)
     return c

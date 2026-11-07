@@ -3,6 +3,8 @@
 Agent-first robot design: CAD as Python code → computed mass properties → MJCF → checks → renders, in one command.
 
 ```bash
+uv run mechasmith build designs/so101.py        # SO-101 arm (6x STS3215): MJCF, sweeps, arm check, viewer
+uv run python scripts/compare_joints.py <reference.xml> build/so101 --site gripper=gripper
 uv run mechasmith build designs/microduck.py    # Pollen's Microduck, reverse-engineered as code-CAD
 uv run python scripts/compare_render.py <reference scene.xml> build/microduck designs/microduck.py compare.png
 uv run python benchmarks/compare_microduck.py build/microduck   # axis-line placement and masses vs Microduck
@@ -37,7 +39,8 @@ def build(p):
 ```
 
 How parts get attached:
-- `fasten(a, b, spin=...)` puts b's connector face flat on a's (they touch by construction).
+- `fasten(a, b, spin=..., at=...)` puts b's connector face flat on a's (they touch by construction).
+  `at=<world point>` seats b elsewhere on a's face; the point is checked to be on a's surface.
   Servos, U-brackets, horn plates, spacers and L-brackets come with connectors.
 - `attach(base, part)` is for parts drawn in world coordinates (shells, covers). Contact is checked
   on that line; a gap raises `AttachmentError: head does not touch neck_pitch_case: the gap is 7.61 mm`.
@@ -46,6 +49,15 @@ How parts get attached:
 - `servo(...).case.face(BACK)` picks whichever connector currently faces a world direction.
 - `loft_cavity`, `rounded_box_cavity`: intersect a plate with a shell's cavity so it reaches the
   walls exactly (how the Microduck head motor support and hip plate are made).
+- `asm.link(name, around=servo, path=[...], width=, holds=Hold(next_servo, at, axis, body))` draws a
+  whole printed link: a body across the full width of the servo it turns on, cut clear of that servo
+  over the declared joint range (that leaves the fork), plus a pocket seating the next servo
+  (`Hold(..., band=28)` for an open ring holder, `wrap=` to cover only part of the case). Both contacts
+  hold by construction; a link that comes out in pieces is an error. `printed(...)` is the same
+  without a fork (bases, gripper bodies); `on=part` attaches a link without a fork.
+- `swept_link(anchor, axis, path, width, range, span)` is the room a link needs as it turns; give
+  it to the parent's `clear=` and the parent can be as big as you like without blocking the joint.
+  `diamonds(...)` makes lightening-hole grids for `cut=`.
 - `asm.robot()` groups rigidly connected parts into links; `joint` splits them.
   `robot.mirror("left_", "right_")` then makes the other side.
 
@@ -58,8 +70,8 @@ uv run mechasmith build designs/microduck.py --set battery_g=80 --set shin_len=4
 ```
 
 Geometry helpers, all from `mechasmith`: `UP DOWN FWD BACK LEFT RIGHT`, `box`, `cyl`, `rect`, `slot`,
-`circle`, `extrude(outline, plane, at, center, depth)`, `move`, `color("#ff661f")`, and shells
-(`loft_shell`, `arch`, `profile_plate`, `rounded_box_shell`). Designs need no build123d import;
+`circle`, `polygon`, `extrude(outline, plane, at, center, depth)`, `move`, `color("#ff661f")`, and shells
+(`loft_shell`, `arch`, `rounded_box_shell`); `polygon(points, round=)` outlines any plate or link. Designs need no build123d import;
 everything returned is a build123d shape, so it is still there for anything unusual.
 
 ## Conventions
@@ -78,6 +90,8 @@ everything returned is a build123d shape, so it is still there for anything unus
 - Mass and inertia come from the CAD solids, with a 3D-printing infill model for printed parts.
 - Exact mesh-boolean interference at the home pose, then a sweep of every joint reporting its usable range and the first parts that collide.
 - Contact-sheet renders of the home pose and any named `POSES`.
+- Fixed-base arms with a `tool_site` get an arm check: the torque each servo needs to hold `HOME`
+  plus `payload_kg` at the tool (as a fraction of its limit), the sag that implies, and the reach.
 - Floating-base robots get a stand test: hold `HOME` with the servos alone for 3 s, then report whether it
   stays up, where it settles, per-servo torque load, the support margin, and whether servo stiffness alone
   could hold the pose upright (`pd_stiffness_ratio`; below 1 means a balance controller is required).
@@ -97,7 +111,7 @@ everything returned is a build123d shape, so it is still there for anything unus
   orange cup feet) from measured part boxes, section profiles and material colours. No Pollen meshes are
   used. All 14 joint axes lie within 0.8 mm of Microduck's; it stands at HOME on servos alone (3 degrees,
   20 mm margin) with a 100 g battery chosen by sweep. New shell helpers: `loft_body`/`loft_shell`
-  (lofted sections, optionally arched), `arch`, `profile_plate`.
+  (lofted sections, optionally arched), `arch`, and plate outlines (now `polygon` + `extrude`).
 - Known gaps: 543 g vs 737 g; round hip-roll brackets and the fixed jaw servo are not modelled.
 - Day 4: design API (`@design`, typed `param`s with ranges, `symmetric` poses), `Robot.mirror`,
   `Part.mirrored` and a geometry toolkit. `microduck.py` builds one leg and mirrors it; its output is
@@ -108,6 +122,30 @@ everything returned is a build123d shape, so it is still there for anything unus
   electronics sit on the face plate. The hip-yaw servos, neck mount and battery are now also held by
   explicit parts (hip plate, a neck mount standing on the floor, power support). Joint axes, usable
   ranges and standing are unchanged; mass +8 g for the added parts.
-- One way to build: both designs use assemblies; hand placement (`Link`, `Part`, placed servos,
+- SO-101 arm (`designs/so101.py`): six STS3215 servos, fixed base, gripper. Built in the reference's
+  frame from measured joint positions: all six joint axes within 0.2 mm of the SO-ARM100 MJCF, same
+  axis signs and ranges, fingertip site 0.5 mm off. Every printed part is an `asm.link`: mass 600 g vs
+  632 g, and the mass beyond each joint (what the servos carry) within 3.5% of the reference; the
+  elbow's usable range stops where the reference's does (2.36 rad, lower arm meets the shoulder).
+  `scripts/compare_links.py` renders each body next to the reference's.
+  Holding full extension with 200 g needs 49% of the shoulder-lift servo. It drove these API changes:
+  servo specs without a rear boss (`STS3215`), `fasten(..., at=)`, `polygon` + `extrude` in any plane
+  (replacing the XZ-only `profile_plate`; `extrude` no longer depends on outline winding), the arm
+  check, and `scripts/compare_joints.py` for any reference MJCF.
+- One way to build: all designs use assemblies; hand placement (`Link`, `Part`, placed servos,
   world-frame bracket functions) is no longer part of the API.
-- Next: one `mechasmith` CLI for scripts and benchmarks, tests, packaging.
+- Microduck ported to the same pieces, after a body-by-body comparison with Pollen's model: the foot
+  is an open tub with the ankle fork rising out of it (`asm.link`, one-sided because the shin holds the
+  servo's back; the ankle swings down inside the tub and the build carves the walls where it passes) in
+  a TPU sole that wraps up the sides; the thigh is a cap round both servos (`tray`); bearings where
+  Pollen's model has them (`bearing`, `asm.link(bearing=)`); the head gains a floored bottom shell,
+  the soft mouth, a jaw servo (`asm.lock`: mounted, not a simulated joint) with the U-shaped jaw on its
+  horn, and a cradle round the head-yaw servo carrying a bearing on the roll axis (`Hold` on a servo
+  that is already placed checks the pocket against it). Mass 692 g vs 737 g (was 550 g): trunk -1%,
+  legs -10%, head and neck -7%, part of it mass Pollen's head-yaw body carries beyond its listed parts. Fitting
+  Pollen's body masses gives printed parts at 1.07 g/cm^3, so the design's `infill` defaults to 0.85
+  (`robot.print_settings(infill=)` reprints any robot). Joint axes unchanged. Pollen's own model falls
+  in the servo-only stand test (80 deg nose down), and so does ours now (79 deg): the old design stood
+  only because its head was too light. Remaining: ankle down to -1.40 rad (the foot meets the thigh
+  cap); legs 10% light (hip-yaw bracket and foot fork smaller than Pollen's).
+- Next: servo gear variants (the leader arm), one CLI, tests, packaging.

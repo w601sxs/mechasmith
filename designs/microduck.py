@@ -10,21 +10,26 @@ and mirrored with microduck_rl's axis convention (right = -left for symmetric mo
 
 Frame: mm, x forward, y left, z up; origin between the hip-yaw servo centres.
 """
+import numpy as np
+from scipy.spatial import ConvexHull
+
 from mechasmith import (BACK, BOUGHT, DOWN, FWD, LEFT, PLA, TPU, UP, XL330, Assembly, Component, MountFace,
-                        arch, box, color, cyl, design, extrude, horn_plate, l_bracket, loft_cavity, loft_shell, move,
-                        param, profile_plate, rect, rounded_box_cavity, rounded_box_shell, servo, slot, spacer,
-                        symmetric, u_bracket)
+                        arch, bearing, box, color, cyl, design, extrude, horn_plate, l_bracket, loft_cavity,
+                        loft_shell, move, param, polygon, rect, rounded_box_cavity, rounded_box_shell, servo, slot,
+                        spacer, symmetric, tray, u_bracket, Hold, RIGHT)
 
 # Head loaf: (x from the head-yaw axis, half width, top above the head-roll axis), mm.
 HEAD_STATIONS = [(-58, 22, 14), (-56, 29, 23), (-46, 35, 30), (-36, 38, 33), (-16, 40.6, 35.6),
                  (4, 42.3, 37.3), (24, 43, 39.5), (44, 44, 40.5), (64, 44, 41)]
-HEAD_BOTTOM, HEAD_SPLIT = -17.0, -3.0   # below the roll axis; white above the split, orange below
+HEAD_BOTTOM, HEAD_SPLIT = -17.0, 3.0   # below the roll axis; white above the split, orange below
 
 # Colours measured from the reference model's materials.
 SHELL, SHELL_L, TAUPE = color("#d9d9d6"), color("#cccccc"), color("#aba399")
 ORANGE, YELLOW, DARK, SLATE = color("#ff661f"), color("#f5b024"), color("#212621"), color("#596166")
 LENS, BATTERY, PCB, INK = color("#42474c"), color("#4d4d4d"), color("#4f7d69"), color("#141417")
 T = 2.5   # bracket plate thickness
+BIG_BEARING = (22.0, 16.0, 4.0)   # the 22 x 16 x 4 mm bearings at the hips and neck
+SMALL_BEARING = (15.0, 9.0, 2.5)  # the small one in each foot
 
 STAND = {"left_hip_roll": -0.0873, "left_hip_pitch": -0.4579, "left_knee": -0.0049, "left_ankle": 0.4530,
          "neck_pitch": 0.3491, "head_pitch": 0.3491}   # microduck_rl HOME_FRAME
@@ -39,7 +44,7 @@ STAND = {"left_hip_roll": -0.0873, "left_hip_pitch": -0.4579, "left_knee": -0.00
         knee_drop=param(22.0, (10, 40), "knee axis below the hip-pitch axis"),
         shin_len=param(42.0, (39, 70), "knee axis -> ankle axis (>= 39 frees the knee)"),
         ankle_in=param(5.0, (0, 10), "ankle inboard of the knee"),
-        foot_clear=param(14.0, (13.8, 25), "ankle axis -> top of the foot (>= 13.8 frees the ankle)"),
+        tub_top=param(10.5, (10.0, 20), "ankle axis -> top of the foot tub's walls (>= 10 clears the shin)"),
         foot_size=param((54.0, 40.0), doc="foot length, width"),
         foot_forward=param(6.8, (-10, 25), "foot centre ahead of the ankle axis"),
         sole_bottom=param(25.0, (20, 40), "ankle axis -> bottom of the sole"),
@@ -47,16 +52,17 @@ STAND = {"left_hip_roll": -0.0873, "left_hip_pitch": -0.4579, "left_knee": -0.00
         trunk_half_w=param(32.0, (25, 40), "trunk shell half width"),
         trunk_z=param((-8.5, 33.5), doc="trunk shell, bottom and top z"),
         trunk_wall=param(1.6, (1.0, 3.0), "trunk shell wall"),
-        battery_g=param(100.0, (20, 200), "upright pack behind the hips; 100 g holds HOME best on servos alone"),
+        battery_g=param(100.0, (20, 200), "upright battery pack behind the hips"),
         neck_x=param(20.0, (0, 30), "neck axis, fore/aft"),
         neck_z=param(23.4, (15, 40), "neck-pitch axis height; sets the neck mount's length"),
         head_pitch_reach=param(17.0, (16, 30), "U-bracket over the head-pitch servo"),
         roll_spacer=param(8.0, (2, 20), "head-yaw case -> head-roll horn"),
         head_wall=param(1.8, (1.0, 3.0), "head shell wall"),
-        head_hole_r=param(26.0, (21, 30), "opening around the head-yaw axis"),
+        head_hole_r=param(29.0, (21, 32), "neck opening in the head floor, round the head-yaw axis"),
         electronics_g=param(25.0, (0, 60), "Raspberry Pi Zero 2 W + servo hat, behind the face"),
         speaker_g=param(8.0, (0, 30), "speaker at the back of the head"),
         camera_g=param(5.0, (0, 20), "camera module behind the lens"),
+        infill=param(0.85, (0.1, 1.0), "PLA infill; 0.85 matches the reference's part masses (1.07 g/cm^3)"),
     ),
     home=symmetric(STAND),
     poses={
@@ -68,7 +74,7 @@ def build(p):
     asm = trunk(p)
     left_leg(asm, p)
     neck_and_head(asm, p)
-    return asm.robot().mirror("left_", "right_")
+    return asm.robot().mirror("left_", "right_").print_settings(infill=p.infill)
 
 
 def trunk(p) -> Assembly:
@@ -103,6 +109,9 @@ def left_leg(asm: Assembly, p) -> None:
     yaw = servo("left_hip_yaw", XL330)
     asm.fasten(hip_plate.c("left_hip_seat"), yaw.case.c("back"), spin=(yaw.BODY, BACK))
     asm.joint("left_hip_yaw", yaw, (-0.436, 0.524))
+    a = yaw.axis
+    asm.attach(hip_plate, bearing("left_hip_yaw_bearing", yaw.anchor - a * (XL330.case_half_axial + 2.0), a,
+                                  *BIG_BEARING))
 
     plate = horn_plate(XL330, "left_hip_yaw_plate", (20, 26), color=DARK)
     asm.fasten(yaw.horn.c("face"), plate.c("horn"))
@@ -113,7 +122,10 @@ def left_leg(asm: Assembly, p) -> None:
     # Hip-pitch servo beside the roll servo, horn facing in, held by an L-bracket off the roll horn.
     target = roll.anchor + (p.pitch_x, p.roll_gap + T, 0)
     lb = asm.attach(roll.horn, l_bracket("left_hip_roll_bracket", roll.face("face"), MountFace(target, -LEFT),
-                                         b_x=FWD, color=TAUPE))
+                                         b_x=FWD, width=22, color=TAUPE))
+    a = roll.axis
+    asm.attach(lb, bearing("left_hip_roll_bearing", roll.anchor + a * (XL330.case_half_axial + 1.5), a, 18.0,
+                           16.0, 3.0))
     pitch = servo("left_hip_pitch", XL330)
     asm.fasten(lb.c("b"), pitch.horn.c("face"))
     asm.joint("left_hip_pitch", pitch, (-1.571, 1.571), reverse=True)
@@ -122,21 +134,24 @@ def left_leg(asm: Assembly, p) -> None:
     px, py, pz = pitch.anchor
     knee_x, knee_z = px - XL330.case_below - p.knee_gap - XL330.case_width / 2, pz - p.knee_drop
     y_out = py + XL330.horn_face
-    tear = [(px, pz), (knee_x - 1.5, pz + 2.5), (knee_x, knee_z)]
-    cover = asm.attach(pitch.case, Component.world("left_thigh_cover", profile_plate(tear, y_out, y_out + T, 12.0),
-                                                   PLA, SHELL))
-    cover.connector("knee_seat", at=(knee_x, y_out, knee_z), normal=-LEFT, x=FWD)
     knee = servo("left_knee", XL330)
+    cap_wall, cap_end = 1.6, y_out - 4.5           # a shallow skirt: the shin and ankle swing inside it
+    knee_case = box((knee_x - 10, py - 1, knee_z - XL330.case_above), (knee_x + 10, py + 1, knee_z + XL330.case_below))
+    outline = case_outline([pitch.case.world_shape, knee_case], pad=0.0)
+    cap = tray(outline, "XZ", at=y_out + cap_wall, depth=-(y_out + cap_wall - cap_end), wall=cap_wall, round=3.0)
+    seat = (knee_x, y_out - 0.4, knee_z)            # the knee bearing's ring is pressed into the cap
+    cap -= cyl(seat, LEFT, BIG_BEARING[0] / 2, BIG_BEARING[2]) - cyl(seat, LEFT, BIG_BEARING[1] / 2, 9)
+    cover = asm.attach(pitch.case, Component.world("left_thigh_cover", cap, PLA, SHELL))
+    cover.connector("knee_seat", at=(knee_x, y_out, knee_z), normal=-LEFT, x=FWD)
     asm.fasten(cover.c("knee_seat"), knee.case.c("boss"), spin=(knee.BODY, UP))
-    for nm, (x, z) in (("pitch", (px, pz)), ("knee", (knee_x, knee_z))):
-        asm.attach(cover, Component.world(f"left_{nm}_bearing", cyl((x, y_out + T + 0.5, z), LEFT, 4.5, 1.0),
-                                          BOUGHT, DARK, mass_override=0.002))
+    asm.attach(cover, bearing("left_knee_bearing", seat, LEFT, *BIG_BEARING))
     asm.joint("left_knee", knee, (-1.571, 1.571))
 
-    # Shin: block on the knee horn, then a plate down the inside to the ankle servo's boss.
+    # Shin: block on the knee horn, then a round-ended plate down the inside to the ankle
+    # servo's boss (round, so it clears the foot tub at any ankle angle).
     kx, ky, kz = knee.anchor
     y_horn, y_boss, za = ky - XL330.horn_face, ky - p.ankle_in - XL330.horn_face, kz - p.shin_len
-    shin = box((kx - 9.5, y_boss - T, za - 9.5), (kx + 9.5, y_boss, kz + 9.5)) \
+    shin = extrude(polygon([(kx, kz), (kx, za)], round=9.5), "XZ", at=y_boss - T, depth=T) \
         + box((kx - 9.5, y_boss, kz - 9.5), (kx + 9.5, y_horn, kz + 9.5))
     shin = asm.attach(knee.horn, Component.world("left_shin_plate", shin, PLA, TAUPE))
     shin.connector("ankle_seat", at=(kx, y_boss, za), normal=LEFT, x=FWD)
@@ -144,20 +159,29 @@ def left_leg(asm: Assembly, p) -> None:
     asm.fasten(shin.c("ankle_seat"), ankle.case.c("boss"), spin=(ankle.BODY, UP))
     asm.joint("left_ankle", ankle, (-1.571, 1.571))
 
-    # Foot: orange bracket off the ankle horn, an orange cup with side rims, a yellow TPU sole.
+    # Foot: an open orange tub with the fork rising out of it (one part; the ankle servo
+    # swings down inside the tub, and the build carves the walls where it passes), in a
+    # yellow TPU sole that wraps up its sides.
     xa, yc, za = ankle.anchor
-    top = za - p.foot_clear
     fl, fw = p.foot_size
     fx, z_sole = xa + p.foot_forward, za - p.sole_bottom
-    fb = asm.attach(ankle.horn, l_bracket("left_foot_bracket", ankle.face("face"), MountFace((xa, yc, top), DOWN),
-                                          width=24, color=ORANGE))
-    cup = extrude(rect(fl, fw, 8.0), "XY", at=z_sole + 3.5, center=(fx, yc), depth=top - z_sole - 3.5)
-    for s in (1, -1):  # rims along both long sides, clear of the ankle case
-        cup += extrude(rect(fl - 6, 2.4, 1.1), "XY", at=top, center=(fx, yc + s * (fw / 2 - 1.2)), depth=8.0)
-    cup = asm.attach(fb, Component.world("left_foot", cup, PLA, ORANGE))
-    sole = asm.attach(cup, Component.world("left_sole", extrude(rect(fl, fw, 8.0), "XY", at=z_sole, center=(fx, yc),
-                                                                 depth=3.5), TPU, YELLOW, collision=True))
+    core = [(fx + sx * (fl / 2 - 8), yc + sy * (fw / 2 - 8)) for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    tub = tray(core, "XY", at=z_sole + 2.0, depth=za - p.tub_top - z_sole - 2.0, wall=2.0, round=6.0)
+    cup = asm.link("left_foot", around=ankle, path=[ankle.anchor, (xa, yc, z_sole + 12)], width=20, add=[tub],
+                   cheek=2.5, gap=0.3, round=1.5, back_cheek=False, color=ORANGE)   # the shin holds the back
+    sole = asm.attach(cup, Component.world("left_sole", tray(core, "XY", at=z_sole, depth=13.0, wall=2.0, round=8.0),
+                                           TPU, YELLOW, collision=True))
     sole.sites["left_foot"] = (xa, yc, z_sole)
+
+
+def case_outline(shapes, pad: float = 1.0):
+    """Convex outline (x, z) round the side views of some servo cases, for a cap over them."""
+    pts = []
+    for sh in shapes:
+        bb = sh.bounding_box()
+        pts += [(x, z) for x in (bb.min.X - pad, bb.max.X + pad) for z in (bb.min.Z - pad, bb.max.Z + pad)]
+    pts = np.array(pts)
+    return [tuple(pts[i]) for i in ConvexHull(pts).vertices]
 
 
 def neck_and_head(asm: Assembly, p) -> None:
@@ -187,12 +211,24 @@ def neck_and_head(asm: Assembly, p) -> None:
     yaw = servo("head_yaw", XL330)
     asm.fasten(bracket.c("base"), yaw.horn.c("face"), spin=(yaw.BODY, -LEFT))
     asm.joint("head_yaw", yaw, (-2.967, 2.967), reverse=True)
+    a = yaw.axis
+    asm.attach(bracket, bearing("head_yaw_bearing", yaw.anchor + a * (XL330.case_half_axial + 1.5), a, 22.0, 16.0,
+                                3.0))
 
+    # Cradle round the head-yaw servo (a ring, so the head can roll round it), with a bearing on
+    # the roll axis at its front; the head pivots there and on the roll servo.
+    cradle = asm.link("head_yaw_cradle", on=yaw.case, holds=Hold(yaw, yaw.anchor, yaw.axis, RIGHT, band=18),
+                      wall=2.0, color=SLATE)
     roll_spacer = spacer("head_roll_spacer", p.roll_spacer, color=DARK)
     asm.fasten(yaw.case.face(BACK), roll_spacer.c("a"))
     roll = servo("head_roll", XL330)
     asm.fasten(roll_spacer.c("b"), roll.horn.c("face"), spin=(roll.BODY, -LEFT))
     asm.joint("head_roll", roll, (-0.436, 0.436), reverse=True, child_link="head")
+    a = roll.axis
+    asm.attach(roll_spacer, bearing("head_roll_bearing", roll.anchor + a * (XL330.case_half_axial + 1.5), a, 22.0,
+                                    16.0, 3.0))
+    front = cradle.world_shape.bounding_box().max.X
+    asm.attach(cradle, bearing("head_cradle_bearing", (front + 2.0, 0.0, roll.anchor[2]), FWD, *BIG_BEARING))
     head(asm, p, roll, origin=(yaw.anchor[0], 0.0, roll.anchor[2]))
 
 
@@ -204,7 +240,8 @@ def head(asm: Assembly, p, roll, origin) -> None:
     ox, _, oz = origin
     fx = HEAD_STATIONS[-1][0]
     face_c, face_w, face_h = (HEAD_SPLIT + 38) / 2, 82.0, 38 - HEAD_SPLIT
-    loft = dict(stations=HEAD_STATIONS, bottom=HEAD_BOTTOM, wall=p.head_wall, radius=26.0, bottom_radius=6.0)
+    loft = dict(stations=HEAD_STATIONS, bottom=HEAD_BOTTOM, wall=p.head_wall, radius=26.0, bottom_radius=6.0,
+                open_bottom=False)   # the bottom shell has a floor (with the neck opening)
     cavity = at(loft_cavity(**loft))
     shell = loft_shell(**loft) - cyl((0, 0, HEAD_BOTTOM), UP, p.head_hole_r, 80)
     shell -= extrude(arch(face_w, face_h, 22, 3), "YZ", at=fx - 10, center=(0, face_c), depth=20)
@@ -233,10 +270,22 @@ def head(asm: Assembly, p, roll, origin) -> None:
                                      mass_override=p.electronics_g / 1000))
     asm.attach(support, Component.world("speaker", box((rx - 11.5, -17, top_of_roll + 2.5), (rx + 11.5, 17, top_of_roll + 9.5)),
                                         BOUGHT, color("#4a4a4a"), mass_override=p.speaker_g / 1000))
-    # Jaw hinge lobes, set into the shell, with the hinge horn on each.
-    for s, nm in ((1, "left"), (-1, "right")):
-        y0, y1 = sorted((s * 40.5, s * 45.1))
-        lobe = asm.attach(top, Component.world(f"jaw_lobe_{nm}", at(profile_plate([(-12, HEAD_SPLIT), (14, HEAD_SPLIT),
-                                                                                  (-1, 12)], y0, y1, 4)), PLA, ORANGE))
-        asm.attach(lobe, Component.world(f"jaw_horn_{nm}", at(cyl((-1, s * 45.6, 8), LEFT, 5, 1.2)), PLA, DARK))
+    # Jaw servo, upright just ahead of the head-yaw servo (head roll turns about x, so they
+    # never meet), hanging from a plate across the shell. The jaw is not simulated as a joint:
+    # the servo is locked and the jaw bolts to its horn. Then the soft TPU mouth.
+    jx, jz, horn_y = 23.0, -0.5, 40.0
+    mount = asm.attach(top, Component.world("jaw_servo_mount", at(box((13, 11, 24), (33, 60, 26.5))) & cavity,
+                                            PLA, DARK))
+    mount.connector("jaw_seat", at=(ox + jx, horn_y - XL330.horn_face, oz + 24), normal=DOWN, x=FWD)
+    jaw_servo = servo("jaw_servo", XL330)
+    asm.fasten(mount.c("jaw_seat"), jaw_servo.case.c("long_end"), spin=(jaw_servo.AXIS, LEFT))
+    asm.lock(jaw_servo)
+    arms = [extrude(polygon([(jx, jz), (62, -11.5)], round=6), "XZ", at=y0, depth=7) for y0 in (horn_y, -horn_y - 7)]
+    lip = box((61, -horn_y - 7, HEAD_BOTTOM - 0.5), (66.5, horn_y + 7, -6))
+    jaw = asm.attach(jaw_servo.horn, Component.world("jaw", at(arms[0] + arms[1] + lip), PLA, ORANGE))
+    for s_ in (1, -1):
+        asm.attach(jaw, Component.world(f"jaw_hinge_{'left' if s_ > 0 else 'right'}",
+                                        at(cyl((jx, s_ * (horn_y + 7.6), jz), LEFT, 5, 1.2)), PLA, DARK))
+    asm.attach(asm.components["head_bottom_shell"], Component.world("soft_mouth", at(box((25.6, -44, HEAD_BOTTOM), (57.8, 44, -7.3))) & cavity,
+                                    TPU, ORANGE))
     top.sites["head_camera"] = (ox + fx, 0.0, oz + 16)
