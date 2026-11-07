@@ -1,7 +1,7 @@
 """mechasmith command line.
 
     mechasmith describe <design.py>             parameters, ranges, poses (JSON)
-    mechasmith build <design.py> [--set k=v]    meshes, MJCF, checks, renders, viewer (JSON report)
+    mechasmith build <design.py> [--set k=v]    meshes, MJCF, URDF, checks, renders, viewer (JSON report)
 
 Output is JSON on stdout so an agent can parse it.
 """
@@ -14,7 +14,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import checks, mjcf, render, sim, viewer
+from . import checks, mjcf, render, sim, urdf, viewer
 from .design import Design, find_design
 
 
@@ -70,11 +70,14 @@ def main(argv=None):
     out = args.out or Path("build") / args.design.stem
     out.mkdir(parents=True, exist_ok=True)
     scene = mjcf.export(robot, out, base_height=dz.base_height)
+    lift = 0.0 if robot.floating else (-mjcf.lowest_point_mm(robot) * 1e-3 if dz.base_height == "auto"
+                                       else float(dz.base_height))
+    urdf_path = urdf.export(robot, out, base_height=lift)
     t_export = time.time() - t0
 
     manifest = json.loads((out / "manifest.json").read_text())
     report = {"design": str(args.design), "params": dz.resolve(**overrides).as_dict(), "out": str(out),
-              "scene": str(scene), "mass": checks.mass_report(manifest)}
+              "scene": str(scene), "urdf": str(urdf_path), "mass": checks.mass_report(manifest)}
     home = dz.home
     if args.no_sweep:
         pg = checks.PosedGeometry(scene)

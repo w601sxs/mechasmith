@@ -1,6 +1,6 @@
 # mechasmith
 
-Agent-first robot design: CAD as Python code → computed mass properties → MJCF → checks → renders, in one command.
+Agent-first robot design: CAD as Python code → computed mass properties → MJCF and URDF → checks → renders, in one command.
 
 ```bash
 uv run mechasmith build designs/so101.py        # SO-101 arm (6x STS3215): MJCF, sweeps, arm check, viewer
@@ -10,7 +10,8 @@ uv run python scripts/compare_render.py <reference scene.xml> build/microduck de
 uv run python benchmarks/compare_microduck.py build/microduck   # axis-line placement and masses vs Microduck
 uv run python scripts/sweep_balance.py designs/microduck.py battery_g 40,70,100   # CoM vs ankles per value
 uv run python scripts/balance.py build/microduck       # where the mass sits relative to the feet
-uv run mechasmith build designs/duck_leg.py     # writes build/duck_leg/{scene.xml, robot.xml, meshes/, views.png, report.json}
+uv run mechasmith build designs/duck_leg.py     # writes build/duck_leg/{scene.xml, robot.xml, robot.urdf, meshes/, views.png, report.json}
+uv run --with yourdfpy python scripts/check_urdf.py build/so101   # URDF matches the MJCF (masses, inertias, joints, frames)
 uv run python benchmarks/compare_leg.py build/duck_leg   # compare against Microduck's reference numbers
 uv run python scripts/sweep_param.py designs/duck_leg.py foot_reach left_ankle 12,14,16
 ```
@@ -87,6 +88,11 @@ everything returned is a build123d shape, so it is still there for anything unus
 
 ## What `build` checks
 - MJCF compiles, and the scene reloads from disk.
+- `robot.urdf` (Isaac Sim / Isaac Lab, ROS, PyBullet, Drake) is written from the same tree, meshes and
+  inertials: link frames at the joint anchors with identity orientation, revolute joints with the
+  servo's limits, effort, velocity, damping and friction; fixed-base robots bolted to a `world` link;
+  sites as `<site>_frame` links. Servo position gains have no URDF field and stay in the MJCF.
+  `scripts/check_urdf.py` loads it with MuJoCo and with yourdfpy and compares it with the MJCF.
 - Mass and inertia come from the CAD solids, with a 3D-printing infill model for printed parts.
 - Exact mesh-boolean interference at the home pose, then a sweep of every joint reporting its usable range and the first parts that collide.
 - Contact-sheet renders of the home pose and any named `POSES`.
