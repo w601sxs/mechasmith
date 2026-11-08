@@ -106,7 +106,11 @@ class Joint:
     anchor: np.ndarray                 # world, mm
     axis: np.ndarray                   # world, unit
     range: tuple[float, float]         # rad
-    actuator: ActuatorModel | None = None
+    actuator: ActuatorModel | None = None  # None: a passive pivot
+    stiffness: float = 0.0             # N*m/rad spring, toward springref
+    springref: float = 0.0             # rad
+    damping: float | None = None       # N*m*s/rad; None: the actuator's
+    armature: float | None = None
 
 
 class Robot:
@@ -116,8 +120,22 @@ class Robot:
         self.floating = floating
         self.links: dict[str, Link] = {root.name: root}
         self.joints: list[Joint] = []
+        self.loops: list[tuple[Link, Link, np.ndarray]] = []       # pinned pairs that close a loop (world mm)
+        self.couplings: list[tuple[str, str, float]] = []          # (follower, leader, ratio)
 
-    def add_joint(self, name, parent: Link, child: Link, anchor, axis, range, actuator=None) -> Joint:
+    def couple(self, follower: str, leader: str, ratio: float = 1.0) -> "Robot":
+        """Make one joint follow another (q_follower = ratio * q_leader), e.g. two fingers
+        driven by one motor. The follower must not have its own actuator."""
+        names = {j.name: j for j in self.joints}
+        for n in (follower, leader):
+            if n not in names:
+                raise ValueError(f"couple: no joint {n!r}")
+        if names[follower].actuator is not None:
+            names[follower].actuator = None          # the leader's motor drives both
+        self.couplings.append((follower, leader, float(ratio)))
+        return self
+
+    def add_joint(self, name, parent: Link, child: Link, anchor, axis, range, actuator=None, **dynamics) -> Joint:
         if child.name in self.links:
             raise ValueError(f"link {child.name!r} already has a parent (kinematic tree only)")
         if parent.name not in self.links:
@@ -126,7 +144,7 @@ class Robot:
             raise ValueError(f"duplicate joint name {name!r}")
         axis = np.asarray(axis, float)
         axis = axis / np.linalg.norm(axis)
-        j = Joint(name, parent, child, np.asarray(anchor, float), axis, tuple(range), actuator)
+        j = Joint(name, parent, child, np.asarray(anchor, float), axis, tuple(range), actuator, **dynamics)
         self.links[child.name] = child
         self.joints.append(j)
         return j
@@ -196,7 +214,16 @@ class Robot:
             axis = M @ j.axis if axes == "vector" else -(M @ j.axis)
             lo, hi = j.range
             rng = (-hi, -lo) if axes == "vector" else (lo, hi)
-            self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator)
+            self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator,
+                           stiffness=j.stiffness, springref=j.springref if axes == "pseudo" else -j.springref,
+                           damping=j.damping, armature=j.armature)
+        for a, b, p in list(self.loops):
+            if a.name.startswith(src) or b.name.startswith(src):
+                self.loops.append((self.links[rename(a.name)] if a.name.startswith(src) else a,
+                                   self.links[rename(b.name)] if b.name.startswith(src) else b, M @ p))
+        for f, l, r in list(self.couplings):
+            if f.startswith(src) or l.startswith(src):
+                self.couplings.append((rename(f) if f.startswith(src) else f, rename(l) if l.startswith(src) else l, r))
         return self
 
     def total_mass(self) -> float:

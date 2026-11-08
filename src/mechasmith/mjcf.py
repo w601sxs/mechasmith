@@ -15,6 +15,7 @@ from build123d import export_stl
 from .core import Link, Robot
 
 VISUAL_GROUP, COLLISION_GROUP = 2, 3
+EQ_SOLREF, EQ_SOLIMP = [0.005, 1.0], [0.95, 0.99, 0.001, 0.5, 2.0]   # stiff loop and coupling constraints
 
 
 def _export_part_mesh(part, origin_mm, path: Path):
@@ -57,12 +58,15 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
         pj = robot.parent_joint(link)
         if pj is not None:
             a = pj.actuator
-            body.add_joint(
+            jnt = body.add_joint(
                 name=pj.name, type=mujoco.mjtJoint.mjJNT_HINGE, axis=pj.axis,
                 range=pj.range, limited=mujoco.mjtLimited.mjLIMITED_TRUE,
-                damping=a.damping if a else 0.0, frictionloss=a.frictionloss if a else 0.0,
-                armature=a.armature if a else 0.0,
+                damping=pj.damping if pj.damping is not None else (a.damping if a else 0.0),
+                frictionloss=a.frictionloss if a else 0.0,
+                armature=pj.armature if pj.armature is not None else (a.armature if a else 0.0),
             )
+            if pj.stiffness:
+                jnt.stiffness, jnt.springref = [pj.stiffness, 0.0, 0.0], pj.springref   # linear spring
 
         parts_meta = []
         for part in link.parts:
@@ -94,6 +98,16 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
 
     add_link(robot.root, spec.worldbody, np.zeros(3))
 
+    # Closed loops: each pin becomes a connect constraint (its anchor in the first body's frame;
+    # MuJoCo finds the matching point in the second at the home pose). Pinned bodies do not collide.
+    for la, lb, p in robot.loops:
+        spec.add_equality(type=mujoco.mjtEq.mjEQ_CONNECT, objtype=mujoco.mjtObj.mjOBJ_BODY, name1=la.name,
+                          name2=lb.name, data=list((p - robot.body_origin(la)) * 1e-3) + [0.0] * 9,
+                          solref=EQ_SOLREF, solimp=EQ_SOLIMP)
+        spec.add_exclude(bodyname1=la.name, bodyname2=lb.name)
+    for f, l, r in robot.couplings:
+        spec.add_equality(type=mujoco.mjtEq.mjEQ_JOINT, objtype=mujoco.mjtObj.mjOBJ_JOINT, name1=f, name2=l,
+                          data=[0.0, r, 0.0, 0.0, 0.0] + [0.0] * 7, solref=EQ_SOLREF, solimp=EQ_SOLIMP)
     for j in robot.joints:
         a = j.actuator
         if a is None:
@@ -109,6 +123,8 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
                            "anchor_mm": j.anchor.tolist(), "axis": j.axis.tolist(),
                            "range": list(j.range),
                            "actuator": (j.actuator.source if j.actuator else None)} for j in robot.joints]
+    manifest["loops"] = [{"a": a.name, "b": b.name, "anchor_mm": p.tolist()} for a, b, p in robot.loops]
+    manifest["couplings"] = [{"follower": f, "leader": l, "ratio": r} for f, l, r in robot.couplings]
     manifest["total_mass"] = robot.total_mass()
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return spec

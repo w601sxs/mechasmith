@@ -59,6 +59,11 @@ How parts get attached:
 - `swept_link(anchor, axis, path, width, range, span)` is the room a link needs as it turns; give
   it to the parent's `clear=` and the parent can be as big as you like without blocking the joint.
   `diamonds(...)` makes lightening-hole grids for `cut=`.
+- `asm.hinge(name, a, b, at, axis, range)` is a pin with no servo (passive, or give it an `actuator`;
+  `stiffness`/`springref` for a return spring). Its axis must pass through both parts. A hinge
+  between two parts that are already connected closes a loop (four-bars, parallel grippers),
+  exported as an MJCF `equality connect`. `robot.couple(follower, leader)` drives two joints from
+  one motor. Poses of such mechanisms are solved, so the sweep, renders and viewer move the linkage.
 - `asm.robot()` groups rigidly connected parts into links; `joint` splits them.
   `robot.mirror("left_", "right_")` then makes the other side.
 
@@ -154,4 +159,10 @@ everything returned is a build123d shape, so it is still there for anything unus
   in the servo-only stand test (80 deg nose down), and so does ours now (79 deg): the old design stood
   only because its head was too light. Remaining: ankle down to -1.40 rad (the foot meets the thigh
   cap); legs 10% light (hip-yaw bracket and foot fork smaller than Pollen's).
+- Robotiq 2F-85 (`designs/robotiq_2f85.py`), done as implement → critique → improve → reimplement
+  ([docs/iterations/robotiq_2f85.md](docs/iterations/robotiq_2f85.md)). Round 1 on the old API
+  (servo joints only, no loops) gave fingers whose pads tilted 46 deg and crossed. That drove
+  `asm.hinge`, loop closures, couplings, joint springs, solved poses and the `attach` containment
+  fix. Round 2 is the real five-bar per finger: all 8 joint axes on the Menagerie model's, pads
+  within ~1 mm of its path and parallel within 2 deg, mass 1056 g vs 1053 g.
 - Next: servo gear variants (the leader arm), one CLI, tests, packaging.

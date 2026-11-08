@@ -50,8 +50,12 @@ def contact_sheet(scene_xml, out_png, qpos: dict | None = None, size=(560, 480),
     data = mujoco.MjData(model)
     if full_qpos is not None:
         data.qpos[:] = full_qpos
-    for name, val in (qpos or {}).items():
-        data.qpos[model.jnt_qposadr[model.joint(name).id]] = val
+    elif model.neq:
+        from .sim import solve_pose
+        data.qpos[:] = solve_pose(model, data, qpos or {})
+    if full_qpos is None and not model.neq:
+        for name, val in (qpos or {}).items():
+            data.qpos[model.jnt_qposadr[model.joint(name).id]] = val
     mujoco.mj_forward(model, data)
     if full_qpos is None and model.njnt and model.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE:
         _rest_on_floor(model, data)

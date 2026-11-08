@@ -11,6 +11,8 @@ origins are pure translations and the zero pose is the design's home pose.
   field: they stay in the MJCF (and the manifest).
 * A fixed-base robot is bolted to a `world` link; a floating one is left free.
 * Sites (tool tips, feet, IMU, camera) become massless `<site>_frame` links on fixed joints.
+* Coupled joints get `<mimic>`. URDF cannot express closed loops: the tree is exported and
+  each loop pin is listed in a comment (the MJCF keeps them as constraints).
 """
 from __future__ import annotations
 
@@ -65,6 +67,11 @@ def to_urdf(robot: Robot, mesh_dir: str = "meshes", base_height: float = 0.0) ->
                   f'    <origin xyz="{_v((np.asarray(pos) - origin) * 1e-3)}" rpy="0 0 0"/>', "  </joint>"]
         return s
 
+    mimic = {f: (l, r) for f, l, r in robot.couplings}
+    for a, b, p in robot.loops:
+        out.append(f"  <!-- closed loop (not representable in URDF): {a.name} and {b.name} are pinned at "
+                   f"{_v(np.asarray(p) * 1e-3)} m -->")
+
     def walk(link: Link):
         out.extend(link_xml(link))
         for j in robot.children(link):
@@ -77,8 +84,10 @@ def to_urdf(robot: Robot, mesh_dir: str = "meshes", base_height: float = 0.0) ->
                 f'    <axis xyz="{_v(j.axis)}"/>',
                 f'    <limit lower="{lo:.6g}" upper="{hi:.6g}" effort="{(a.forcerange if a else 0):.6g}" '
                 f'velocity="{(a.max_velocity if a else 0):.6g}"/>',
-                f'    <dynamics damping="{(a.damping if a else 0):.6g}" friction="{(a.frictionloss if a else 0):.6g}"/>',
-                "  </joint>"])
+                f'    <dynamics damping="{(j.damping if j.damping is not None else (a.damping if a else 0)):.6g}" '
+                f'friction="{(a.frictionloss if a else 0):.6g}"/>']
+                + ([f'    <mimic joint="{mimic[j.name][0]}" multiplier="{mimic[j.name][1]:.6g}" offset="0"/>']
+                   if j.name in mimic else []) + ["  </joint>"])
             walk(j.child)
 
     walk(robot.root)

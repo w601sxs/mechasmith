@@ -37,10 +37,11 @@ class PosedGeometry:
         self.joint_names = [m.joint(i).name for i in range(m.njnt) if m.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
 
     def set_pose(self, q: dict[str, float]):
+        from .sim import solve_pose
         m, d = self.model, self.data
+        qpos = solve_pose(m, d, q)
         mujoco.mj_resetData(m, d)
-        for name, val in q.items():
-            d.qpos[m.jnt_qposadr[m.joint(name).id]] = val
+        d.qpos[:] = qpos
         mujoco.mj_kinematics(m, d)
 
     def _posed(self, idx):
@@ -68,8 +69,11 @@ class PosedGeometry:
 
 def interference_report(scene_xml: Path, steps: int = 24, base_pose: dict | None = None) -> dict:
     """Home-pose interference, then a sweep of each joint over its declared range
-    (others held at the base pose). Reports the usable collision-free range."""
+    (others held at the base pose). Reports the usable collision-free range. In a model
+    with loops or couplings only the driven joints are swept; the rest follow."""
+    from .sim import driven_joints
     pg = PosedGeometry(scene_xml)
+    pg.joint_names = driven_joints(pg.model)
     m = pg.model
     base = dict(base_pose or {})
     pg.set_pose(base)

@@ -41,6 +41,14 @@ class AttachmentError(ValueError):
     pass
 
 
+def _overlap(a: Shape, b: Shape) -> bool:
+    """True when two solids share volume (e.g. a motor inside a housing)."""
+    try:
+        return (a & b).volume > 1e-3
+    except Exception:
+        return False
+
+
 # ---- frames ------------------------------------------------------------------------
 
 def _frame(origin, z, x) -> np.ndarray:
@@ -296,6 +304,8 @@ class Assembly:
             raise AttachmentError(f"attach: {part.name} has no position; make it with Component.world(...) "
                                   f"or connect it with fasten(...)")
         gap = base.world_shape.distance_to(part.world_shape)
+        if gap > TOUCH_MM and _overlap(base.world_shape, part.world_shape):
+            gap = 0.0                                   # one sits inside the other: that touches too
         if gap > TOUCH_MM:
             raise AttachmentError(f"{part.name} does not touch {base.name}: the gap is {gap:.2f} mm")
         self._register(part)
@@ -336,6 +346,43 @@ class Assembly:
             other._world_shape = None
         self._register(other)
         self.edges.append(_Edge(case, horn, "fixed"))
+
+    def hinge(self, name: str, a: Component, b: Component, at, axis, range: tuple[float, float] | None = None, *,
+              actuator: ActuatorModel | None = None, stiffness: float = 0.0, springref: float = 0.0,
+              damping: float | None = None, armature: float | None = None, pin: float = 3.0,
+              child_link: str | None = None) -> None:
+        """A pin between two parts, about `axis` through the world point `at` (mm), with no
+        servo: passive unless you give an `actuator`. The pin's axis must pass through both parts
+        (within `pin` mm, so clevis forks and bored holes count; checked).
+        If `b` is not connected yet it becomes the moving side (`range` required). If `b` is
+        already connected, the pin closes a loop (a four-bar, a parallel gripper): it is kept
+        as a constraint (MJCF `equality connect`) and the joint range does not apply."""
+        at, axis = np.asarray(at, float), unit(axis)
+        self._require_placed(a, f"hinge {name}")
+        if b.pose is None:
+            raise AttachmentError(f"hinge {name}: {b.name} has no position; draw it with Component.world(...)")
+        # The pin's axis must pass through both parts (within a pin radius: forks and holes count).
+        from build123d import Edge
+        line = Edge.make_line(tuple(at - axis * 200), tuple(at + axis * 200))
+        for c in (a, b):
+            gap = c.world_shape.distance_to(line)
+            if gap > pin + TOUCH_MM:
+                raise AttachmentError(f"hinge {name}: the pin axis through {at.round(2).tolist()} misses {c.name} "
+                                      f"by {gap:.2f} mm")
+        if b.name in self.components:
+            self.edges.append(_Edge(a, b, "loop", dict(name=name, anchor=at)))
+            return
+        if range is None:
+            raise AttachmentError(f"hinge {name}: give the joint range")
+        self._register(b)
+        self.edges.append(_Edge(a, b, "joint", dict(
+            name=name, anchor=at, axis=unit(axis), range=tuple(range), actuator=actuator,
+            child_link=child_link or f"{name}_link",
+            dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature))))
+
+    def couple(self, follower: str, leader: str, ratio: float = 1.0) -> None:
+        """q_follower = ratio * q_leader (one motor driving two joints)."""
+        self.couplings = getattr(self, "couplings", []) + [(follower, leader, float(ratio))]
 
     def link(self, name: str, *, around: ServoUnit | None = None, on: Component | None = None, path=None,
              width: float = 24.0, holds=None, add=(), cut=(), clear=(), wall: float = 2.5, cheek: float = 4.0,
@@ -405,7 +452,16 @@ class Assembly:
         for e in joints:
             j = e.joint
             robot.add_joint(j["name"], links[group_name[find(e.a.name)]], links[j["child_link"]],
-                        j["anchor"], j["axis"], j["range"], j["actuator"])
+                            j["anchor"], j["axis"], j["range"], j["actuator"], **j.get("dynamics", {}))
+        for e in self.edges:
+            if e.kind == "loop":
+                la, lb = links[group_name[find(e.a.name)]], links[group_name[find(e.b.name)]]
+                if la is lb:
+                    raise AttachmentError(f"hinge {e.joint['name']}: {e.a.name} and {e.b.name} are rigidly "
+                                          f"connected already, so the pin cannot turn")
+                robot.loops.append((la, lb, e.joint["anchor"]))
+        for f, l, r in getattr(self, "couplings", []):
+            robot.couple(f, l, r)
         return robot
 
 

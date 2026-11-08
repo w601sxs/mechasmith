@@ -36,7 +36,30 @@ def write_viewer(out_dir: Path, poses: dict[str, dict], report: dict | None = No
         if "joints" in inter:
             summary["limited"] = {j: v["usable"] for j, v in inter["joints"].items() if v["blocked"]}
         summary["home_collisions"] = len(inter.get("home_collisions", []))
-    data = {"robot": man["robot"], "bodies": bodies, "poses": poses, "summary": summary}
+    follow = {}
+    scene = out_dir / "scene.xml"
+    if scene.exists():
+        import mujoco
+        import numpy as np
+        from .sim import driven_joints, solve_pose
+        m = mujoco.MjModel.from_xml_path(str(scene))
+        if m.neq:
+            # A constrained model: the page drives only the driven joints; the rest follow
+            # from tables solved here, and every pose is stored complete.
+            d = mujoco.MjData(m)
+            hinges = [m.joint(i).name for i in range(m.njnt) if m.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
+            driven = driven_joints(m)
+            deps = [n for n in hinges if n not in driven]
+            val = lambda qp, n: float(qp[m.jnt_qposadr[m.joint(n).id]])
+            for n in driven:
+                lo, hi = m.jnt_range[m.joint(n).id]
+                qs = np.linspace(lo, hi, 25)
+                sols = [solve_pose(m, d, {n: float(q)}) for q in qs]
+                follow[n] = {"q": [round(float(q), 4) for q in qs],
+                             "deps": {k: [round(val(s, k), 4) for s in sols] for k in deps}}
+            poses = {name: {k: round(val(solve_pose(m, d, pose), k), 4) for k in hinges}
+                     for name, pose in poses.items()}
+    data = {"robot": man["robot"], "bodies": bodies, "poses": poses, "summary": summary, "follow": follow}
     html = TEMPLATE.read_text().replace("__ROBOT_NAME__", man["robot"]).replace(
         "__DATA__", json.dumps(data, separators=(",", ":")))
     path = out_dir / "viewer.html"

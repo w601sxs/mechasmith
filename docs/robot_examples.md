@@ -186,7 +186,7 @@ forces. Ordered so each step adds a small number of new capabilities.
    MJCF's axis lines within 1 mm and its mass within 10%, passes the reach/payload check, and
    renders side by side with the reference.
 2. **Generic benchmark tool** (from step 1): `mechasmith compare --ref <scene.xml> --map joints.json`.
-3. **Robotiq 2F-85**: closed chains and equality constraints.
+3. **Robotiq 2F-85**: closed chains and equality constraints. *Done:* see docs/iterations/robotiq_2f85.md.
 4. **LEAP Hand**: sub-assemblies and instancing.
 5. **Go2-class quadruped**: two-plane symmetry and custom actuators; first Isaac Lab handoff via
    URDF/USD export.

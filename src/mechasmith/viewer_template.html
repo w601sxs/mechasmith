@@ -208,12 +208,29 @@ const DATA = __DATA__;
         (limited[j.name] ? `<span class="lim">collision-free ${deg(limited[j.name][0])} to ${deg(limited[j.name][1])}</span>` : "");
       g.appendChild(row);
       const inp = row.querySelector("input"), out = row.querySelector("output");
-      inp.addEventListener("input", () => { j.q = +inp.value; out.textContent = deg(j.q); setActive(null); applyPose(); render(); });
-      inputs[j.name] = { inp, out, j };
+      inp.addEventListener("input", () => { j.q = +inp.value; out.textContent = deg(j.q); follow(j.name); setActive(null); applyPose(); render(); });
+      inputs[j.name] = { inp, out, j, row };
     }
     sec.appendChild(g); groupsEl.appendChild(sec);
   }
 
+  // Linkages: a driven joint's slider moves the joints that follow it (loops, couplings).
+  const FOLLOW = DATA.follow || {};
+  for (const [lead, t] of Object.entries(FOLLOW)) for (const dep of Object.keys(t.deps)) {
+    const r = inputs[dep]; if (!r) continue;
+    r.inp.disabled = true; r.row.title = `follows ${lead}`;
+    r.out.insertAdjacentHTML("afterend", `<span class="lim" style="color:var(--muted)">follows ${lead.replace(/_/g, " ")}</span>`);
+  }
+  function follow(name) {
+    const t = FOLLOW[name]; if (!t) return;
+    const q = inputs[name].j.q, xs = t.q;
+    let i = 0; while (i < xs.length - 2 && q > xs[i + 1]) i++;
+    const u = Math.max(0, Math.min(1, (q - xs[i]) / (xs[i + 1] - xs[i] || 1)));
+    for (const [dep, ys] of Object.entries(t.deps)) {
+      const r = inputs[dep]; if (!r) continue;
+      r.j.q = ys[i] + (ys[i + 1] - ys[i]) * u; r.inp.value = r.j.q; r.out.textContent = deg(r.j.q);
+    }
+  }
   const posesEl = document.getElementById("poses"), poseBtns = {};
   const allPoses = { zero: {}, ...DATA.poses };
   function setActive(name) { for (const [k, b] of Object.entries(poseBtns)) b.setAttribute("aria-pressed", k === name ? "true" : "false"); }

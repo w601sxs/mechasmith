@@ -42,6 +42,47 @@ def _support_margin(points_xy: np.ndarray, com_xy: np.ndarray) -> float | None:
     return float(-(hull.equations[:, :2] @ com_xy + hull.equations[:, 2]).max())
 
 
+def constrained(m) -> bool:
+    """True when the model has loop or coupling constraints (poses must be solved, not set)."""
+    return m.neq > 0
+
+
+def driven_joints(m) -> list[str]:
+    """Joints you set directly: every hinge in an unconstrained model; otherwise only the
+    actuated ones (passive pins in loops and coupled followers are worked out)."""
+    hinges = [m.joint(i).name for i in range(m.njnt) if m.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
+    if not constrained(m):
+        return hinges
+    acted = {m.joint(m.actuator_trnid[i, 0]).name for i in range(m.nu) if m.actuator_trntype[i] == 0}
+    return [n for n in hinges if n in acted]
+
+
+def solve_pose(m, d, q: dict, max_steps: int = 4000) -> np.ndarray:
+    """Full qpos for a pose given by joint values. Unconstrained models: set and done.
+    Constrained ones (loops, couplings): actuators hold their joints at the requested values
+    and the rest settles under the constraints and joint springs, with gravity and contacts
+    off: the pose the mechanism takes with nothing touching it."""
+    mujoco.mj_resetData(m, d)
+    _set_joints(m, d, q)
+    if not constrained(m):
+        mujoco.mj_kinematics(m, d)
+        return d.qpos.copy()
+    g, flags = m.opt.gravity.copy(), m.opt.disableflags
+    m.opt.gravity[:] = 0
+    m.opt.disableflags |= mujoco.mjtDisableBit.mjDSBL_CONTACT
+    try:
+        for i in range(m.nu):
+            j = m.actuator_trnid[i, 0]
+            d.ctrl[i] = d.qpos[m.jnt_qposadr[j]]
+        for k in range(max_steps):
+            mujoco.mj_step(m, d)
+            if k > 200 and np.abs(d.qvel).max() < 1e-5:
+                break
+    finally:
+        m.opt.gravity[:], m.opt.disableflags = g, flags
+    return d.qpos.copy()
+
+
 def place_on_floor(m, d, q: dict, clearance: float = 0.0005):
     """Set the joint pose and drop the floating base so the feet just touch the floor."""
     mujoco.mj_resetData(m, d)
