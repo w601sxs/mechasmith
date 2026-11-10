@@ -132,6 +132,8 @@ def stand_test(scene_xml: Path, pose: dict, seconds: float = 3.0) -> dict:
     d = mujoco.MjData(m)
     if m.jnt_type[0] != mujoco.mjtJoint.mjJNT_FREE:
         return {"skipped": "fixed-base model"}
+    if not any(m.actuator_trntype[i] == mujoco.mjtTrn.mjTRN_JOINT for i in range(m.nu)):
+        return {"skipped": "no joint actuators"}
     names = [m.actuator(i).name for i in range(m.nu)]
     goal = np.array([pose.get(n, 0.0) for n in names])
     h = _hold(m, d, pose, goal, seconds)
@@ -169,6 +171,57 @@ def stand_test(scene_xml: Path, pose: dict, seconds: float = 3.0) -> dict:
                 if ratio < 1 else "servo stiffness alone can hold this pose upright",
         "final_qpos": h["qpos"].tolist(),
     }
+
+
+def hover_test(scene_xml: Path, seconds: float = 3.0, tilt_deg: float = 10.0) -> dict:
+    """For rotorcraft: can it hover, and with what margin? Reports thrust-to-weight, the
+    hover thrust of each rotor (as a fraction of its maximum), whether the rotor layout can
+    produce thrust and all three moments independently, and a closed-loop check: start
+    tilted by `tilt_deg`, fly a simple attitude and altitude controller through the rotor
+    allocation, and see whether it levels off and holds height."""
+    from .mjcf import allocation, hover_thrusts
+    m = mujoco.MjModel.from_xml_path(str(scene_xml))
+    d = mujoco.MjData(m)
+    A, hi = allocation(m)
+    if A is None:
+        return {"skipped": "no rotors"}
+    mass = float(m.body_subtreemass[1])
+    weight = mass * -m.opt.gravity[2]
+    out = {"mass_g": round(mass * 1000, 2), "thrust_to_weight": round(float(hi.sum() / weight), 2),
+           "controllable": bool(np.linalg.matrix_rank(A, tol=1e-9) == 4)}
+    u0 = hover_thrusts(m)
+    out["hover_throttle"] = None if u0 is None else [round(float(x), 3) for x in u0 / hi]
+    if u0 is None or not out["controllable"]:
+        out["hovers"] = False
+        return out
+    # Closed loop, in the air, from a tilted start.
+    mujoco.mj_resetData(m, d)
+    d.qpos[2] = 1.0
+    t = np.radians(tilt_deg)
+    d.qpos[3:7] = [np.cos(t / 2), np.sin(t / 2), 0, 0]
+    mujoco.mj_forward(m, d)
+    I = np.diag(m.body_inertia[1])                     # principal; adequate for a symmetric frame
+    Ainv = np.linalg.pinv(A)
+    wn, z0, worst = 8.0, 1.0, 0.0
+    n = int(seconds / m.opt.timestep)
+    for k in range(n):
+        R = d.xmat[1].reshape(3, 3)
+        up = R[:, 2]
+        err = np.cross(up, [0, 0, 1.0])                # world-frame tilt error
+        e_b = R.T @ err
+        w_b = d.qvel[3:6]
+        moments = I @ (wn ** 2 * e_b - 2 * wn * w_b)
+        az = 4.0 * (z0 - d.qpos[2]) - 3.0 * d.qvel[2]
+        thrust = mass * (-m.opt.gravity[2] + az) / max(up[2], 0.3)
+        d.ctrl[:] = np.clip(Ainv @ np.r_[thrust, moments], 0, hi)
+        mujoco.mj_step(m, d)
+        if k > n // 2:
+            worst = max(worst, float(np.degrees(np.arccos(np.clip(d.xmat[1].reshape(3, 3)[2, 2], -1, 1)))))
+    out.update({"start_tilt_deg": tilt_deg, "settled_tilt_deg": round(worst, 2),
+                "height_error_mm": round(float(abs(d.qpos[2] - z0) * 1000), 1),
+                "yaw_rate_dps": round(float(np.degrees(d.qvel[5])), 2)})
+    out["hovers"] = bool(worst < 2.0 and out["height_error_mm"] < 20 and abs(out["yaw_rate_dps"]) < 5)
+    return out
 
 
 def arm_test(scene_xml: Path, pose: dict, tool_site: str, payload_kg: float = 0.0) -> dict:

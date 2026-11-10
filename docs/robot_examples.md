@@ -143,7 +143,7 @@ forces. Ordered so each step adds a small number of new capabilities.
 - **Library work:** continuous joints, **velocity** actuators, caster/omni wheels (passive rollers),
   a drive check (straight-line and turn-in-place in sim).
 
-### 11. Crazyflie 2 (Bitcraze)
+### 11. Crazyflie 2 (Bitcraze) — done, see docs/iterations/crazyflie2.md
 - **Why:** open micro-drone, in both Isaac Sim and Menagerie; for drones, mass and inertia accuracy
   is everything, which is exactly what our CAD-derived inertia gives.
 - **Library work:** **thrust actuators** at sites (no joints), propeller guards, a hover test.

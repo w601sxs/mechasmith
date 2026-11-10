@@ -89,13 +89,16 @@ def main(argv=None):
     for name, pose in dz.poses.items():
         report["renders"].append(str(render.contact_sheet(scene, out / f"pose_{name}.png", qpos=pose,
                                                           title=f"{robot.name}: {name}")))
-    if robot.floating:
+    if robot.rotors:
+        report["hover"] = sim.hover_test(scene)
+    elif robot.floating:
         st = sim.stand_test(scene, home)
-        final = st.pop("final_qpos")
         report["stand"] = st
-        report["renders"].append(str(render.contact_sheet(
-            scene, out / "stand.png", full_qpos=final,
-            title=f"{robot.name}: after {st['seconds']} s holding HOME ({'standing' if st['stands'] else 'FELL'})")))
+        if "final_qpos" in st:
+            final = st.pop("final_qpos")
+            report["renders"].append(str(render.contact_sheet(
+                scene, out / "stand.png", full_qpos=final,
+                title=f"{robot.name}: after {st['seconds']} s holding HOME ({'standing' if st['stands'] else 'FELL'})")))
     if not robot.floating and dz.tool_site:
         report["arm"] = sim.arm_test(scene, home, dz.tool_site, dz.payload_kg)
     report["viewer"] = str(viewer.write_viewer(out, {"home": home, **dz.poses}, report))

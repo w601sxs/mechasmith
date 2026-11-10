@@ -7,7 +7,7 @@ Everything a design needs is importable from the top level:
 from .assembly import (Assembly, AttachmentError, Component, ServoUnit, horn_plate, l_bracket, servo, servo_housing,
                        spacer, u_bracket)
 from .components.servo import STS3215, XL330, MountFace, ServoSpec
-from .core import ActuatorModel, Robot
+from .core import ActuatorModel, Robot, Rotor
 from .design import Design, Param, Params, design, param, symmetric
 from .geom import BACK, DOWN, FWD, LEFT, RIGHT, UP, box, circle, color, cyl, diamonds, tray, extrude, move, polygon, rect, slot
 from .links import Hold, bearing, printed, swept_link

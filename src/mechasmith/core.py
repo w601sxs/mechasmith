@@ -99,6 +99,21 @@ class Link:
 
 
 @dataclass
+class Rotor:
+    """A motor and propeller: thrust along `axis` at `pos`, plus the reaction torque.
+    spin=+1: the propeller turns counter-clockwise seen from above (about +axis), so the
+    body feels -torque_ratio * thrust about the axis."""
+    name: str
+    link: "Link"
+    pos: np.ndarray          # world mm, home pose
+    axis: np.ndarray         # world unit
+    spin: int                # +1 or -1
+    thrust_max: float        # N
+    torque_ratio: float      # m: yaw torque per newton of thrust
+    source: str = ""
+
+
+@dataclass
 class Joint:
     name: str
     parent: Link
@@ -122,6 +137,8 @@ class Robot:
         self.joints: list[Joint] = []
         self.loops: list[tuple[Link, Link, np.ndarray]] = []       # pinned pairs that close a loop (world mm)
         self.couplings: list[tuple[str, str, float]] = []          # (follower, leader, ratio)
+        self.rotors: list[Rotor] = []                              # propellers: thrust + reaction torque
+        self.sensors: list[tuple[str, str]] = []                   # (kind, site): "gyro", "accelerometer", ...
 
     def couple(self, follower: str, leader: str, ratio: float = 1.0) -> "Robot":
         """Make one joint follow another (q_follower = ratio * q_leader), e.g. two fingers

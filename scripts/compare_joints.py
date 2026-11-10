@@ -18,6 +18,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("reference")
 ap.add_argument("build", type=Path)
 ap.add_argument("--site", action="append", default=[], help="site pairs to compare, ours=theirs")
+ap.add_argument("--body", action="append", default=[],
+                help="body pairs whose mass and inertia to compare, ours=theirs (e.g. a drone's frame)")
 a = ap.parse_args()
 
 
@@ -63,4 +65,21 @@ for pair in a.site:
     ours, theirs = pair.split("=")
     po, pr = od.site_xpos[om.site(ours).id] * 1000, rd.site_xpos[rm.site(theirs).id] * 1000
     print(f"site {ours:10s} ours {po.round(1).tolist()} ref {pr.round(1).tolist()}  ({np.linalg.norm(po - pr):.1f} mm apart)")
+def inertia_world(m, d, b):
+    R = d.ximat[b].reshape(3, 3)
+    return R @ np.diag(m.body_inertia[b]) @ R.T
+
+
+for pair in a.body:
+    ours, theirs = pair.split("=")
+    bo, br = om.body(ours).id, rm.body(theirs).id
+    Io, Ir = inertia_world(om, od, bo), inertia_world(rm, rd, br)
+    print(f"body {ours} vs {theirs}: mass ours {om.body_mass[bo] * 1000:.2f} g ref {rm.body_mass[br] * 1000:.2f} g")
+    for k, ax in enumerate("xyz"):
+        print(f"  I{ax}{ax}  ours {Io[k, k]:.4e}  ref {Ir[k, k]:.4e}  ({100 * (Io[k, k] / Ir[k, k] - 1):+.0f}%)")
+    off = max(abs(Io[0, 1]), abs(Io[0, 2]), abs(Io[1, 2]))
+    print(f"  largest product of inertia ours {off:.2e} (ref {max(abs(Ir[0, 1]), abs(Ir[0, 2]), abs(Ir[1, 2])):.2e})")
+kinds = lambda m: sorted(str(mujoco.mjtSensor(m.sensor_type[i])).split(".")[-1] for i in range(m.nsensor))
+if rm.nsensor:
+    print(f"sensors ours {kinds(om)}\n        ref  {kinds(rm)}")
 (a.build / "compare_reference.json").write_text(json.dumps({"joints": rows, "mass_g": [mo, mr]}, indent=2))

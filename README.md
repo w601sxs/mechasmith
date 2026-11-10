@@ -64,6 +64,9 @@ How parts get attached:
   between two parts that are already connected closes a loop (four-bars, parallel grippers),
   exported as an MJCF `equality connect`. `robot.couple(follower, leader)` drives two joints from
   one motor. Poses of such mechanisms are solved, so the sweep, renders and viewer move the linkage.
+- `asm.rotor(name, part, at, spin=, thrust_max=, torque_ratio=)` adds a motor and propeller (thrust
+  plus reaction torque, an MJCF site actuator); `asm.imu(site)` adds gyro, accelerometer and
+  orientation sensors. Rotorcraft get a hover keyframe and a hover test instead of the stand test.
 - `asm.robot()` groups rigidly connected parts into links; `joint` splits them.
   `robot.mirror("left_", "right_")` then makes the other side.
 
@@ -165,4 +168,10 @@ everything returned is a build123d shape, so it is still there for anything unus
   `asm.hinge`, loop closures, couplings, joint springs, solved poses and the `attach` containment
   fix. Round 2 is the real five-bar per finger: all 8 joint axes on the Menagerie model's, pads
   within ~1 mm of its path and parallel within 2 deg, mass 1056 g vs 1053 g.
+- Crazyflie 2.1 (`designs/crazyflie2.py`), implement → critique → improve → reimplement
+  ([docs/iterations/crazyflie2.md](docs/iterations/crazyflie2.md)). Round 1 had the parts but could
+  not fly (no thrust, no sensors) and crashed the stand test. That drove `asm.rotor`, `asm.imu`,
+  the hover keyframe and `hover_test`. Round 2: 27.08 g vs 27.0 g, thrust-to-weight 2.26, levels
+  from a 10 degree tilt in closed loop; inertia within 8% of measured values (Menagerie's
+  roll and pitch inertia are not consistent with a flat quad).
 - Next: servo gear variants (the leader arm), one CLI, tests, packaging.

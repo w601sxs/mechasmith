@@ -108,6 +108,16 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
     for f, l, r in robot.couplings:
         spec.add_equality(type=mujoco.mjtEq.mjEQ_JOINT, objtype=mujoco.mjtObj.mjOBJ_JOINT, name1=f, name2=l,
                           data=[0.0, r, 0.0, 0.0, 0.0] + [0.0] * 7, solref=EQ_SOLREF, solimp=EQ_SOLIMP)
+    # Rotors: a site actuator each, thrust along the axis and the reaction torque about it.
+    for r in robot.rotors:
+        act = spec.add_actuator(name=r.name, target=r.name, trntype=mujoco.mjtTrn.mjTRN_SITE)
+        act.gear = list(r.axis) + list(-r.spin * r.torque_ratio * r.axis)
+        act.ctrllimited = mujoco.mjtLimited.mjLIMITED_TRUE
+        act.ctrlrange = [0.0, r.thrust_max]
+    kinds = {"gyro": mujoco.mjtSensor.mjSENS_GYRO, "accelerometer": mujoco.mjtSensor.mjSENS_ACCELEROMETER,
+             "framequat": mujoco.mjtSensor.mjSENS_FRAMEQUAT}
+    for kind, site in robot.sensors:
+        spec.add_sensor(name=f"{site}_{kind}", type=kinds[kind], objtype=mujoco.mjtObj.mjOBJ_SITE, objname=site)
     for j in robot.joints:
         a = j.actuator
         if a is None:
@@ -123,6 +133,9 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
                            "anchor_mm": j.anchor.tolist(), "axis": j.axis.tolist(),
                            "range": list(j.range),
                            "actuator": (j.actuator.source if j.actuator else None)} for j in robot.joints]
+    manifest["rotors"] = [{"name": r.name, "link": r.link.name, "pos_mm": r.pos.tolist(), "axis": r.axis.tolist(),
+                           "spin": r.spin, "thrust_max_n": r.thrust_max, "torque_ratio_m": r.torque_ratio,
+                           "source": r.source} for r in robot.rotors]
     manifest["loops"] = [{"a": a.name, "b": b.name, "anchor_mm": p.tolist()} for a, b, p in robot.loops]
     manifest["couplings"] = [{"follower": f, "leader": l, "ratio": r} for f, l, r in robot.couplings]
     manifest["total_mass"] = robot.total_mass()
@@ -151,6 +164,40 @@ SCENE = """<mujoco model="{name}_scene">
 """
 
 
+def allocation(model, data=None):
+    """Rotor allocation: the 4 x n matrix taking rotor thrusts to [thrust, roll, pitch, yaw]
+    moments about the centre of mass (body frame), and the rotor limits."""
+    import numpy as np
+    d = data if data is not None else mujoco.MjData(model)
+    if data is None:
+        mujoco.mj_forward(model, d)
+    root = 1
+    com = d.subtree_com[root]
+    cols, hi = [], []
+    for i in range(model.nu):
+        if model.actuator_trntype[i] != mujoco.mjtTrn.mjTRN_SITE:
+            continue
+        s = model.actuator_trnid[i, 0]
+        R = d.site_xmat[s].reshape(3, 3)
+        f, tau = R @ model.actuator_gear[i, :3], R @ model.actuator_gear[i, 3:]
+        m = np.cross(d.site_xpos[s] - com, f) + tau
+        Rb = d.xmat[root].reshape(3, 3)
+        cols.append(np.r_[Rb.T @ f, Rb.T @ m][[2, 3, 4, 5]])
+        hi.append(model.actuator_ctrlrange[i, 1])
+    return (np.array(cols).T, np.array(hi)) if cols else (None, None)
+
+
+def hover_thrusts(model):
+    """Rotor thrusts that hold the robot still in the air (None if out of range)."""
+    import numpy as np
+    A, hi = allocation(model)
+    if A is None:
+        return None
+    w = np.array([model.body_subtreemass[1] * -model.opt.gravity[2], 0, 0, 0])
+    u = np.linalg.lstsq(A, w, rcond=None)[0]
+    return u if np.all(u >= 0) and np.all(u <= hi) else None
+
+
 def lowest_point_mm(robot: Robot) -> float:
     return min(p.shape.bounding_box().min.Z for l in robot.links.values() for p in l.parts)
 
@@ -163,7 +210,14 @@ def export(robot: Robot, out_dir, base_height: float | str = "auto") -> Path:
     spec = build_spec(robot, out_dir, base_height)
     abs_mesh = str((out_dir / "meshes").resolve())
     spec.meshdir = abs_mesh
-    spec.compile()  # raises with a clear message if the model is invalid
+    model = spec.compile()  # raises with a clear message if the model is invalid
+    if robot.rotors and robot.floating:
+        u = hover_thrusts(model)
+        if u is not None:
+            key = spec.add_key(name="hover")
+            key.qpos = list(model.qpos0)
+            key.ctrl = list(u)
+            spec.compile()
     xml = spec.to_xml().replace(f'meshdir="{abs_mesh}', 'meshdir="meshes')
     (out_dir / "robot.xml").write_text(xml)
     (out_dir / "scene.xml").write_text(SCENE.format(name=robot.name))

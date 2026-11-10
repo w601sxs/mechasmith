@@ -380,6 +380,26 @@ class Assembly:
             child_link=child_link or f"{name}_link",
             dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature))))
 
+    def rotor(self, name: str, part: Component, at, axis=(0, 0, 1.0), *, spin: int, thrust_max: float,
+              torque_ratio: float, source: str = "") -> None:
+        """A motor and propeller on `part`: thrust (0..thrust_max N) along `axis` through the world
+        point `at`, and a reaction torque of torque_ratio * thrust about the axis, against the
+        spin. spin=+1 turns counter-clockwise seen from above. The point must be on the part."""
+        self._require_placed(part, f"rotor {name}")
+        at = np.asarray(at, float)
+        if part.world_shape.distance_to(Vertex(*at)) > TOUCH_MM and not part.world_shape.is_inside(tuple(at)):
+            raise AttachmentError(f"rotor {name}: {at.round(2).tolist()} is not on {part.name}")
+        if spin not in (1, -1):
+            raise ValueError(f"rotor {name}: spin must be +1 or -1")
+        part.sites[name] = tuple(np.linalg.inv(part.pose) @ np.append(at, 1.0))[:3]
+        self.rotors = getattr(self, "rotors", []) + [dict(name=name, part=part, pos=at, axis=unit(axis), spin=spin,
+                                                         thrust_max=thrust_max, torque_ratio=torque_ratio,
+                                                         source=source)]
+
+    def imu(self, site: str) -> None:
+        """Gyro, accelerometer and orientation sensors at a site (declared on a part's `sites`)."""
+        self.sensors = getattr(self, "sensors", []) + [(k, site) for k in ("gyro", "accelerometer", "framequat")]
+
     def couple(self, follower: str, leader: str, ratio: float = 1.0) -> None:
         """q_follower = ratio * q_leader (one motor driving two joints)."""
         self.couplings = getattr(self, "couplings", []) + [(follower, leader, float(ratio))]
@@ -462,6 +482,11 @@ class Assembly:
                 robot.loops.append((la, lb, e.joint["anchor"]))
         for f, l, r in getattr(self, "couplings", []):
             robot.couple(f, l, r)
+        from .core import Rotor
+        for r in getattr(self, "rotors", []):
+            robot.rotors.append(Rotor(r["name"], links[group_name[find(r["part"].name)]], r["pos"], r["axis"],
+                                      r["spin"], r["thrust_max"], r["torque_ratio"], r["source"]))
+        robot.sensors = list(getattr(self, "sensors", []))
         return robot
 
 
