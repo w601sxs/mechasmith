@@ -4,8 +4,10 @@ Everything a design needs is importable from the top level:
 
     from mechasmith import Assembly, Component, servo, XL330, design, param, UP, box, color
 """
-from .assembly import (Assembly, AttachmentError, Component, ServoUnit, horn_plate, l_bracket, servo, servo_housing,
+from .assembly import (Assembly, AttachmentError, Component, MotorUnit, ServoUnit, horn_plate, l_bracket, motor, servo,
+                       servo_housing,
                        spacer, u_bracket)
+from .components.motor import GO_M8010_6, MotorSpec
 from .components.servo import STS3215, XL330, MountFace, ServoSpec
 from .core import ActuatorModel, Robot, Rotor
 from .design import Design, Param, Params, design, param, symmetric
@@ -18,7 +20,7 @@ __all__ = [
     # designs
     "design", "param", "symmetric", "Design", "Param", "Params",
     # assembling parts
-    "Assembly", "Component", "AttachmentError", "servo", "ServoUnit", "XL330", "STS3215", "ServoSpec", "MountFace",
+    "Assembly", "Component", "AttachmentError", "servo", "ServoUnit", "motor", "MotorUnit", "MotorSpec", "GO_M8010_6", "XL330", "STS3215", "ServoSpec", "MountFace",
     "u_bracket", "horn_plate", "spacer", "l_bracket", "servo_housing", "Hold", "printed", "swept_link", "bearing",
     # geometry
     "UP", "DOWN", "FWD", "BACK", "LEFT", "RIGHT", "box", "diamonds", "tray", "cyl", "rect", "slot", "circle", "polygon", "extrude", "move",

@@ -112,8 +112,9 @@ class Component:
     shape: Shape
     material: Material = PLA
     color: tuple = (0.8, 0.8, 0.8, 1.0)
-    collision: bool = False
+    collision: bool | str = False
     mass_override: float | None = None
+    contact: dict | None = None
     connectors: dict[str, np.ndarray] = field(default_factory=dict)
     sites: dict[str, tuple] = field(default_factory=dict)   # local frame, mm
     pose: np.ndarray | None = None                           # set when placed
@@ -192,6 +193,7 @@ class ServoUnit:
         if s.boss > 0:
             self.case.connector("boss", (-s.back_face, 0, 0), -X, Z, check=False)
         self.horn.connector("face", (s.horn_face, 0, 0), X, Z, check=False)
+        self.default_actuator = spec.actuator
 
     @property
     def placed(self) -> Component:
@@ -217,6 +219,46 @@ class ServoUnit:
 
 def servo(name: str, spec: ServoSpec) -> ServoUnit:
     return ServoUnit(name, spec)
+
+
+class MotorUnit:
+    """A cylindrical joint motor as two components sharing one frame, like a servo:
+    `case` (the stator, bolted to one link) and `horn` (the output flange, bolted to the other).
+    +X is the output axis. Case connectors: back (the -X face), front (the +X face, a ring round
+    the flange). Horn connector: face (the flange's outer face)."""
+    AXIS = np.array([1.0, 0, 0])
+
+    def __init__(self, name: str, spec, reduction: float = 1.0, mode: str = "torque",
+                 armature: float | None = None):
+        from .components.motor import MotorGeometry
+        self.name, self.spec = name, spec
+        g, s = MotorGeometry(spec), spec
+        f = s.flange_mass_fraction
+        self.case = Component(f"{name}_case", g.case(), BOUGHT, (0.12, 0.12, 0.13, 1.0), mass_override=s.mass * (1 - f))
+        self.horn = Component(f"{name}_flange", g.flange(), BOUGHT, (0.7, 0.72, 0.75, 1.0), mass_override=s.mass * f)
+        X, Z = np.eye(3)[0], np.eye(3)[2]
+        self.case.connector("back", (-s.length / 2, 0, 0), -X, Z, check=False)
+        self.case.connector("front", (s.length / 2, 0, s.flange_diameter / 2 + 1), X, Z, check=False)
+        self.horn.connector("face", (s.length / 2 + s.flange_thickness, 0, 0), X, Z, check=False)
+        self.default_actuator = spec.actuator(reduction, mode, armature)
+        self._reduction = reduction
+
+    def drive(self, reduction: float = 1.0, mode: str | None = None, armature: float | None = None) -> ActuatorModel:
+        """The actuator this motor gives a joint it drives remotely, through a belt or rod with
+        an extra `reduction` (mount the motor with `asm.lock(motor)`, then pass this to
+        `asm.hinge(..., actuator=motor.drive(1.9))`)."""
+        return self.spec.actuator(self._reduction * reduction, mode or self.default_actuator.mode, armature)
+
+    placed = ServoUnit.placed
+    anchor = ServoUnit.anchor
+    axis = ServoUnit.axis
+    face = ServoUnit.face
+
+
+def motor(name: str, spec, *, reduction: float = 1.0, mode: str = "torque", armature: float | None = None) -> MotorUnit:
+    """A joint motor from a datasheet `spec`; `reduction` is any extra stage after it (a belt,
+    a linkage), which multiplies torque and reflected inertia and divides speed."""
+    return MotorUnit(name, spec, reduction, mode, armature)
 
 
 # ---- the assembly ---------------------------------------------------------------------
@@ -331,7 +373,7 @@ class Assembly:
         unit_._joint = dict(range=tuple(range), sign=-1 if reverse else 1, case_parent=parent is case)
         self.edges.append(_Edge(parent, child, "joint", dict(
             name=name, anchor=parent.point((0, 0, 0)), axis=axis, range=tuple(range),
-            actuator=actuator or unit_.spec.actuator, child_link=child_link or f"{name}_link")))
+            actuator=actuator or unit_.default_actuator, child_link=child_link or f"{name}_link")))
 
     def lock(self, unit_: ServoUnit) -> None:
         """A servo that is mounted but not simulated as a joint (a jaw, a gripper you do not
@@ -396,9 +438,15 @@ class Assembly:
                                                          thrust_max=thrust_max, torque_ratio=torque_ratio,
                                                          source=source)]
 
-    def imu(self, site: str) -> None:
-        """Gyro, accelerometer and orientation sensors at a site (declared on a part's `sites`)."""
-        self.sensors = getattr(self, "sensors", []) + [(k, site) for k in ("gyro", "accelerometer", "framequat")]
+    def imu(self, site: str, kinds=("gyro", "accelerometer", "framequat")) -> None:
+        """IMU sensors at a site (declared on a part's `sites`). Add "framelinvel",
+        "frameangvel" and "framepos" for the body velocities and position RL policies observe."""
+        self.sensors = getattr(self, "sensors", []) + [(k, site) for k in kinds]
+
+    def touch(self, site: str, radius: float) -> None:
+        """A contact (touch) sensor: a sphere of `radius` mm round a site, e.g. a foot."""
+        self.sensors = getattr(self, "sensors", []) + [("touch", site)]
+        self.touch_radius = {**getattr(self, "touch_radius", {}), site: radius}
 
     def couple(self, follower: str, leader: str, ratio: float = 1.0) -> None:
         """q_follower = ratio * q_leader (one motor driving two joints)."""
@@ -466,7 +514,7 @@ class Assembly:
         for c in self.components.values():
             ln = group_name[find(c.name)]
             link = links.setdefault(ln, Link(ln))
-            link.add(Part(c.name, c.world_shape, c.material, c.color, c.collision, c.mass_override))
+            link.add(Part(c.name, c.world_shape, c.material, c.color, c.collision, c.mass_override, c.contact))
             link.sites.update({k: tuple(c.point(v)) for k, v in c.sites.items()})
         robot = Robot(self.name, links[self.root_link], floating=self.floating)
         for e in joints:
@@ -487,6 +535,7 @@ class Assembly:
             robot.rotors.append(Rotor(r["name"], links[group_name[find(r["part"].name)]], r["pos"], r["axis"],
                                       r["spin"], r["thrust_max"], r["torque_ratio"], r["source"]))
         robot.sensors = list(getattr(self, "sensors", []))
+        robot.site_radius = dict(getattr(self, "touch_radius", {}))
         return robot
 
 

@@ -30,7 +30,9 @@ from .materials import Material
 
 @dataclass
 class ActuatorModel:
-    """Position-controlled servo as MuJoCo sees it (SI units)."""
+    """A joint actuator as MuJoCo sees it (SI units). mode="position": a position servo with
+    gains kp/kv. mode="torque": a torque motor (ctrl is N*m within +-forcerange); kp/kv are then
+    the suggested PD gains, used by the checks and written to the manifest."""
 
     kp: float
     kv: float
@@ -40,6 +42,7 @@ class ActuatorModel:
     armature: float            # kg*m^2 (reflected rotor inertia)
     max_velocity: float        # rad/s, no-load (used for URDF + checks)
     source: str = ""           # where these numbers came from
+    mode: str = "position"     # "position" | "torque"
 
 
 @dataclass
@@ -48,8 +51,10 @@ class Part:
     shape: Shape                       # world frame, home pose, mm
     material: Material
     color: tuple[float, float, float, float] = (0.8, 0.8, 0.8, 1.0)
-    collision: bool = False            # also export as collision geometry
+    collision: bool | str = False      # also export as collision: True/"mesh", or a fitted
+                                       # primitive "box", "sphere", "cylinder", "capsule"
     mass_override: float | None = None # kg, for bought parts with known mass
+    contact: dict | None = None        # MJCF contact settings: friction, condim, solimp, solref, priority
 
     def mirrored(self, name: str, plane: str = "XZ") -> "Part":
         """Mirror image of this part across a world plane through the origin."""
@@ -204,9 +209,12 @@ class Robot:
             This is the URDF/ROS habit and what microduck_rl uses.
         axes="pseudo": the axis is reflected as a rotation axis, so the same joint value
             gives the mirror-image motion and ranges stay as they are.
+        axes="same": both sides keep the same world axes and ranges (Unitree's convention):
+            joints whose axis lies in the mirror plane need opposite values for symmetric
+            motion, the others the same values.
         """
-        if axes not in ("vector", "pseudo"):
-            raise ValueError("axes must be 'vector' or 'pseudo'")
+        if axes not in ("vector", "pseudo", "same"):
+            raise ValueError("axes must be 'vector', 'pseudo' or 'same'")
         _, M = MIRROR_PLANES[plane]
 
         def rename(n: str) -> str:
@@ -231,6 +239,8 @@ class Robot:
             axis = M @ j.axis if axes == "vector" else -(M @ j.axis)
             lo, hi = j.range
             rng = (-hi, -lo) if axes == "vector" else (lo, hi)
+            if axes == "same":
+                axis = j.axis.copy()
             self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator,
                            stiffness=j.stiffness, springref=j.springref if axes == "pseudo" else -j.springref,
                            damping=j.damping, armature=j.armature)
@@ -241,6 +251,16 @@ class Robot:
         for f, l, r in list(self.couplings):
             if f.startswith(src) or l.startswith(src):
                 self.couplings.append((rename(f) if f.startswith(src) else f, rename(l) if l.startswith(src) else l, r))
+        radius = getattr(self, "site_radius", {})
+        for kind, site in list(self.sensors):
+            if site.startswith(src):
+                self.sensors.append((kind, rename(site)))
+                if site in radius:
+                    radius[rename(site)] = radius[site]
+        for r in [r for r in self.rotors if r.name.startswith(src)]:
+            self.rotors.append(Rotor(rename(r.name), self.links[rename(r.link.name)] if r.link.name.startswith(src)
+                                     else r.link, M @ r.pos, M @ r.axis, -r.spin, r.thrust_max, r.torque_ratio,
+                                     r.source))
         return self
 
     def total_mass(self) -> float:

@@ -180,18 +180,28 @@ forces. Ordered so each step adds a small number of new capabilities.
 | Multiple robots per scene | 4 (ALOHA), 12 |
 | Sensor sites (camera, IMU) exported as MJCF sensors | 7, 8, 10, 11 |
 
-## 5. Suggested iteration plan
+## 5. Iteration plan (revised: pick robots for what they teach the library)
 
-1. **SO-101** on the connector API. Done when it builds from parameters, matches the reference
-   MJCF's axis lines within 1 mm and its mass within 10%, passes the reach/payload check, and
-   renders side by side with the reference.
-2. **Generic benchmark tool** (from step 1): `mechasmith compare --ref <scene.xml> --map joints.json`.
-3. **Robotiq 2F-85**: closed chains and equality constraints. *Done:* see docs/iterations/robotiq_2f85.md.
-4. **LEAP Hand**: sub-assemblies and instancing.
-5. **Go2-class quadruped**: two-plane symmetry and custom actuators; first Isaac Lab handoff via
-   URDF/USD export.
-6. **Wheeled base, then SO-101 on a base**: continuous joints, velocity control, design composition.
-7. Humanoids (ToddlerBot, Berkeley Humanoid Lite) once sub-assemblies and custom actuators are solid.
+Each example runs implement → critique → improve the library → reimplement, recorded in
+`docs/iterations/`. Robots are chosen for the capabilities they force, not for coverage; a scan of
+all 77 Menagerie models for MuJoCo features mechasmith cannot express drove the choice.
+
+Done:
+1. **SO-101**: STS3215 servo, fixed base, arm check, printed links (`asm.link`).
+2. **Robotiq 2F-85**: closed loops, passive hinges, couplings, joint springs, solved poses.
+3. **Crazyflie 2.1**: rotors, IMU sensors, hover keyframe and hover test.
+
+Next, in order:
+4. **Unitree Go2** (the dog), *done, see docs/iterations/go2.md*: actuators from motor specs (gear ratio, rotor inertia, torque and
+   speed limits), mirroring in two planes, the RL sensor suite, the Isaac Lab handoff.
+5. **Unitree G1** (the humanoid): humanoid scale (~29 joints, several motor classes), arms and
+   legs as mirrored sub-assemblies, a waist chain.
+6. **Hello Robot Stretch 3**: prismatic joints (a lift, a telescoping arm in coupled stages),
+   wheels (continuous joints, velocity control, rolling contact), a mobile base, cameras.
+
+Later: Tetheria Aero Hand (cables over pulleys, finger sub-assemblies), Agility Cassie
+(compliance and loops on a biped), IIT SoftFoot (patterned arrays). Skipped as repeats for now:
+more arms, grippers, quadrupeds and humanoids; flybody (insect aerodynamics, not buildable).
 
 ## 6. Licensing note
 

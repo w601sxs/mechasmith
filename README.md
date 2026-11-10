@@ -67,6 +67,11 @@ How parts get attached:
 - `asm.rotor(name, part, at, spin=, thrust_max=, torque_ratio=)` adds a motor and propeller (thrust
   plus reaction torque, an MJCF site actuator); `asm.imu(site)` adds gyro, accelerometer and
   orientation sensors. Rotorcraft get a hover keyframe and a hover test instead of the stand test.
+- `motor(name, MotorSpec)` is a cylindrical joint motor built from its datasheet (gear ratio and rotor
+  inertia give armature, torque and speed limits), torque-controlled by default; `motor.drive(1.9)`
+  drives a joint remotely through a belt or rod. `collision="box"|"sphere"|"capsule"|...` fits primitive
+  collision shapes, `contact=` sets friction and softness, `asm.touch` adds foot sensors, and every
+  build exports `home` and pose keyframes. `mirror(axes="same")` keeps both sides' axes (Unitree).
 - `asm.robot()` groups rigidly connected parts into links; `joint` splits them.
   `robot.mirror("left_", "right_")` then makes the other side.
 
@@ -174,4 +179,10 @@ everything returned is a build123d shape, so it is still there for anything unus
   the hover keyframe and `hover_test`. Round 2: 27.08 g vs 27.0 g, thrust-to-weight 2.26, levels
   from a 10 degree tilt in closed loop; inertia within 8% of measured values (Menagerie's
   roll and pitch inertia are not consistent with a flat quad).
-- Next: servo gear variants (the leader arm), one CLI, tests, packaging.
+- Unitree Go2 (`designs/go2.py`), implement → critique → improve → reimplement
+  ([docs/iterations/go2.md](docs/iterations/go2.md)). Round 1 had flipped right-side hips, +33% mass,
+  28 overlaps at home and only position servos. That drove motor specs and units, torque mode, remote
+  drives, the `same` mirror convention, primitive collisions and contact settings, foot sensors,
+  keyframes and an axis-based stand test. Round 2: all 12 axes on the Menagerie model's, 14.85 kg vs
+  15.21 kg, feet within 2 mm, stands on its PD gains; torso roll inertia still 43% low.
+- Next: Unitree G1, then Hello Robot Stretch 3 (the leader arm), one CLI, tests, packaging.

@@ -32,6 +32,9 @@ def load(path):
 
 rm, rd = load(a.reference)
 om, od = load(a.build / "scene.xml")
+# Floating robots sit at different heights in the two files: compare them root to root.
+free = lambda m: m.njnt > 0 and m.jnt_type[0] == mujoco.mjtJoint.mjJNT_FREE
+shift = (rd.xpos[1] - od.xpos[1]) if free(rm) and free(om) else np.zeros(3)
 rows = []
 print(f"{'joint':16s} {'axis-line mm':>12s} {'angle deg':>9s} {'sign':>5s} {'range ours':>17s} {'range ref':>17s}")
 for i in range(rm.njnt):
@@ -44,7 +47,7 @@ for i in range(rm.njnt):
         print(f"{name:16s} missing in ours")
         continue
     u = od.xaxis[j]
-    off = (rd.xanchor[i] - od.xanchor[j]) * 1000
+    off = (rd.xanchor[i] - od.xanchor[j] - shift) * 1000
     dist = float(np.linalg.norm(off - np.dot(off, u) * u))
     c = float(np.dot(u, rd.xaxis[i]))
     ang = float(np.degrees(np.arccos(np.clip(abs(c), 0, 1))))
@@ -63,7 +66,7 @@ for i in range(rm.njnt):
         print(f"  beyond {name:14s} ours {so:7.1f} g   ref {sr:7.1f} g")
 for pair in a.site:
     ours, theirs = pair.split("=")
-    po, pr = od.site_xpos[om.site(ours).id] * 1000, rd.site_xpos[rm.site(theirs).id] * 1000
+    po, pr = (od.site_xpos[om.site(ours).id] + shift) * 1000, rd.site_xpos[rm.site(theirs).id] * 1000
     print(f"site {ours:10s} ours {po.round(1).tolist()} ref {pr.round(1).tolist()}  ({np.linalg.norm(po - pr):.1f} mm apart)")
 def inertia_world(m, d, b):
     R = d.ximat[b].reshape(3, 3)
@@ -77,6 +80,12 @@ for pair in a.body:
     print(f"body {ours} vs {theirs}: mass ours {om.body_mass[bo] * 1000:.2f} g ref {rm.body_mass[br] * 1000:.2f} g")
     for k, ax in enumerate("xyz"):
         print(f"  I{ax}{ax}  ours {Io[k, k]:.4e}  ref {Ir[k, k]:.4e}  ({100 * (Io[k, k] / Ir[k, k] - 1):+.0f}%)")
+    # How far the mass sits from the centre of mass along each axis (rms), from the inertia:
+    # sum(m x^2) = (Iyy + Izz - Ixx) / 2, and so on. Tells you which way mass is missing.
+    for nm, I, mass in (("ours", Io, om.body_mass[bo]), ("ref ", Ir, rm.body_mass[br])):
+        d = np.diag(I)
+        spread = [np.sqrt(max((d.sum() - 2 * d[k]) / 2, 0) / mass) * 1000 for k in range(3)]
+        print(f"  mass spread (rms from the CoM) {nm}: x {spread[0]:.1f}  y {spread[1]:.1f}  z {spread[2]:.1f} mm")
     off = max(abs(Io[0, 1]), abs(Io[0, 2]), abs(Io[1, 2]))
     print(f"  largest product of inertia ours {off:.2e} (ref {max(abs(Ir[0, 1]), abs(Ir[0, 2]), abs(Ir[1, 2])):.2e})")
 kinds = lambda m: sorted(str(mujoco.mjtSensor(m.sensor_type[i])).split(".")[-1] for i in range(m.nsensor))

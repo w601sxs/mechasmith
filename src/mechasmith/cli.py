@@ -69,7 +69,7 @@ def main(argv=None):
     robot = dz.build(**overrides)
     out = args.out or Path("build") / args.design.stem
     out.mkdir(parents=True, exist_ok=True)
-    scene = mjcf.export(robot, out, base_height=dz.base_height)
+    scene = mjcf.export(robot, out, base_height=dz.base_height, keyframes={"home": dz.home, **dz.poses})
     lift = 0.0 if robot.floating else (-mjcf.lowest_point_mm(robot) * 1e-3 if dz.base_height == "auto"
                                        else float(dz.base_height))
     urdf_path = urdf.export(robot, out, base_height=lift)

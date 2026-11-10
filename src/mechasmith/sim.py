@@ -92,15 +92,35 @@ def place_on_floor(m, d, q: dict, clearance: float = 0.0005):
     mujoco.mj_forward(m, d)
 
 
-def _hold(m, d, pose: dict, targets: np.ndarray, seconds: float) -> dict:
+def _pd_gains(m, scene_xml: Path) -> dict | None:
+    """Suggested PD gains for torque-mode actuators, from the build's manifest."""
+    import json
+    man = Path(scene_xml).parent / "manifest.json"
+    if not man.exists():
+        return None
+    acts = json.loads(man.read_text()).get("actuators", {})
+    gains = {}
+    for i in range(m.nu):
+        a = acts.get(m.actuator(i).name)
+        if a and a.get("mode") == "torque":
+            gains[i] = (a["kp"], a["kv"])
+    return gains or None
+
+
+def _hold(m, d, pose: dict, targets: np.ndarray, seconds: float, pd: dict | None = None) -> dict:
     place_on_floor(m, d, pose)
     d.ctrl[:] = targets
+    adr = [(m.jnt_qposadr[m.actuator_trnid[i, 0]], m.jnt_dofadr[m.actuator_trnid[i, 0]]) for i in range(m.nu)]
     root = m.jnt_bodyid[0]
     z0 = float(d.qpos[2])
     n = int(seconds / m.opt.timestep)
     tau = np.zeros((min(int(1.0 / m.opt.timestep), n), m.nu))
     tilt_max = 0.0
     for k in range(n):
+        if pd:                                       # torque motors: run their PD here
+            for i, (kp, kv) in pd.items():
+                qa, va = adr[i]
+                d.ctrl[i] = kp * (targets[i] - d.qpos[qa]) - kv * d.qvel[va]
         mujoco.mj_step(m, d)
         up = d.xmat[root].reshape(3, 3)[:, 2]
         tilt_max = max(tilt_max, float(np.arccos(np.clip(up[2], -1, 1))))
@@ -135,19 +155,34 @@ def stand_test(scene_xml: Path, pose: dict, seconds: float = 3.0) -> dict:
     if not any(m.actuator_trntype[i] == mujoco.mjtTrn.mjTRN_JOINT for i in range(m.nu)):
         return {"skipped": "no joint actuators"}
     names = [m.actuator(i).name for i in range(m.nu)]
-    goal = np.array([pose.get(n, 0.0) for n in names])
-    h = _hold(m, d, pose, goal, seconds)
+    jnames = [m.joint(m.actuator_trnid[i, 0]).name for i in range(m.nu)]
+    goal = np.array([pose.get(n, 0.0) for n in jnames])
+    pd = _pd_gains(m, scene_xml)
+    h = _hold(m, d, pose, goal, seconds, pd)
 
     # Passive stiffness check (sagittal plane): each leg's pitch chain is springs in
     # series; two legs in parallel; compared with gravity's toppling stiffness m*g*h.
     place_on_floor(m, d, pose)
     root = m.jnt_bodyid[0]
     mgh = m.body_subtreemass[root] * 9.81 * d.subtree_com[root][2]
-    kp = m.actuator_gainprm[:, 0]
-    chain = [i for i, n in enumerate(names) if any(k in n for k in ("hip_pitch", "knee", "ankle"))]
-    per_leg = len(chain) // 2 or 1
-    k_leg = 1 / sum(1 / kp[i] for i in chain[:per_leg]) if chain else 0.0
-    ratio = 2 * k_leg / mgh if mgh > 0 else float("inf")
+    kp = np.array([pd[i][0] if pd and i in pd else m.actuator_gainprm[i, 0] for i in range(m.nu)])
+    # Each leg is a root-to-foot chain; its pitch joints (axis along y) act as springs in
+    # series, and the legs act in parallel.
+    act_of = {int(m.actuator_trnid[i, 0]): i for i in range(m.nu)}
+    children = set(int(m.body_parentid[b]) for b in range(1, m.nbody))
+    k_total = 0.0
+    zlow = min(d.xpos[b][2] for b in range(1, m.nbody))
+    legs = [b for b in range(1, m.nbody) if b not in children and d.xpos[b][2] < zlow + 0.06]   # chains to the floor
+    for leaf in legs:
+        ks, b = [], leaf
+        while b > 0:
+            for j in range(m.body_jntadr[b], m.body_jntadr[b] + m.body_jntnum[b]):
+                if m.jnt_type[j] == mujoco.mjtJoint.mjJNT_HINGE and abs(m.jnt_axis[j][1]) > 0.9 and j in act_of:
+                    ks.append(kp[act_of[j]])
+            b = m.body_parentid[b]
+        if ks:
+            k_total += 1 / sum(1 / k for k in ks)
+    ratio = k_total / mgh if mgh > 0 else float("inf")
 
     frange = m.actuator_forcerange[:, 1]
     load = np.abs(h["tau"]).mean(0) / frange

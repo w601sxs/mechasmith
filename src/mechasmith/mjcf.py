@@ -24,6 +24,27 @@ def _export_part_mesh(part, origin_mm, path: Path):
     export_stl(shape, str(path), tolerance=0.05, angular_tolerance=0.15)
 
 
+def _primitive(part, origin_mm):
+    """A primitive collision geom fitted to a part's box in its body frame:
+    (type, size, pos, quat) in metres."""
+    bb = part.shape.bounding_box()
+    lo, hi = np.array([bb.min.X, bb.min.Y, bb.min.Z]), np.array([bb.max.X, bb.max.Y, bb.max.Z])
+    c, h = ((lo + hi) / 2 - origin_mm) * 1e-3, (hi - lo) / 2 * 1e-3
+    kind = part.collision
+    if kind == "box":
+        return mujoco.mjtGeom.mjGEOM_BOX, h, c, [1, 0, 0, 0]
+    if kind == "sphere":
+        return mujoco.mjtGeom.mjGEOM_SPHERE, [h.max(), 0, 0], c, [1, 0, 0, 0]
+    if kind in ("cylinder", "capsule"):
+        k = int(np.argmax(h))
+        r = max(h[i] for i in range(3) if i != k)
+        half = h[k] - (r if kind == "capsule" else 0.0)
+        quat = {0: [0.70710678, 0, 0.70710678, 0], 1: [0.70710678, -0.70710678, 0, 0], 2: [1, 0, 0, 0]}[k]
+        t = mujoco.mjtGeom.mjGEOM_CYLINDER if kind == "cylinder" else mujoco.mjtGeom.mjGEOM_CAPSULE
+        return t, [r, max(half, 1e-4), 0], c, quat
+    raise ValueError(f"part {part.name}: collision must be True, 'mesh', 'box', 'sphere', 'cylinder' or 'capsule'")
+
+
 def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.MjSpec:
     out_dir = Path(out_dir)
     mesh_dir = out_dir / "meshes"
@@ -78,16 +99,25 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
                           meshname=part.name, rgba=part.color, contype=0, conaffinity=0,
                           group=VISUAL_GROUP, density=0)
             if part.collision:
-                body.add_geom(name=f"{part.name}_collision", type=mujoco.mjtGeom.mjGEOM_MESH,
-                              meshname=part.name, group=COLLISION_GROUP, density=0,
-                              rgba=(0.9, 0.2, 0.2, 0.4))
+                if part.collision in (True, "mesh"):
+                    geom = body.add_geom(name=f"{part.name}_collision", type=mujoco.mjtGeom.mjGEOM_MESH,
+                                         meshname=part.name, group=COLLISION_GROUP, density=0,
+                                         rgba=(0.9, 0.2, 0.2, 0.4))
+                else:
+                    t, size, pos, quat = _primitive(part, origin)
+                    geom = body.add_geom(name=f"{part.name}_collision", type=t, size=list(size), pos=list(pos),
+                                         quat=quat, group=COLLISION_GROUP, density=0, rgba=(0.9, 0.2, 0.2, 0.4))
+                for k, v in (part.contact or {}).items():
+                    setattr(geom, k, v)
             pm, _, _ = part.mass_properties()
             parts_meta.append({"name": part.name, "mesh": f"meshes/{fname}", "mass": pm,
                                "material": part.material.name, "collision": part.collision,
                                "color": list(part.color)})
 
         for sname, spos in link.sites.items():
-            body.add_site(name=sname, pos=(np.asarray(spos) - origin) * 1e-3, group=3)
+            r = getattr(robot, "site_radius", {}).get(sname)
+            body.add_site(name=sname, pos=(np.asarray(spos) - origin) * 1e-3, group=3,
+                          **({"size": [r * 1e-3, 0, 0]} if r else {}))
 
         manifest["bodies"][link.name] = {"origin_mm": origin.tolist(), "mass": m, "parts": parts_meta,
                                          "parent": pj.parent.name if pj else None,
@@ -115,7 +145,9 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
         act.ctrllimited = mujoco.mjtLimited.mjLIMITED_TRUE
         act.ctrlrange = [0.0, r.thrust_max]
     kinds = {"gyro": mujoco.mjtSensor.mjSENS_GYRO, "accelerometer": mujoco.mjtSensor.mjSENS_ACCELEROMETER,
-             "framequat": mujoco.mjtSensor.mjSENS_FRAMEQUAT}
+             "framequat": mujoco.mjtSensor.mjSENS_FRAMEQUAT, "framepos": mujoco.mjtSensor.mjSENS_FRAMEPOS,
+             "framelinvel": mujoco.mjtSensor.mjSENS_FRAMELINVEL, "frameangvel": mujoco.mjtSensor.mjSENS_FRAMEANGVEL,
+             "touch": mujoco.mjtSensor.mjSENS_TOUCH}
     for kind, site in robot.sensors:
         spec.add_sensor(name=f"{site}_{kind}", type=kinds[kind], objtype=mujoco.mjtObj.mjOBJ_SITE, objname=site)
     for j in robot.joints:
@@ -123,16 +155,25 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
         if a is None:
             continue
         act = spec.add_actuator(name=j.name, target=j.name, trntype=mujoco.mjtTrn.mjTRN_JOINT)
-        act.set_to_position(kp=a.kp, kv=a.kv)
         act.forcelimited = mujoco.mjtLimited.mjLIMITED_TRUE
         act.forcerange = [-a.forcerange, a.forcerange]
         act.ctrllimited = mujoco.mjtLimited.mjLIMITED_TRUE
-        act.ctrlrange = list(j.range)
+        if a.mode == "torque":
+            act.set_to_motor()
+            act.ctrlrange = [-a.forcerange, a.forcerange]
+        else:
+            act.set_to_position(kp=a.kp, kv=a.kv)
+            act.ctrlrange = list(j.range)
 
     manifest["joints"] = [{"name": j.name, "parent": j.parent.name, "child": j.child.name,
                            "anchor_mm": j.anchor.tolist(), "axis": j.axis.tolist(),
                            "range": list(j.range),
                            "actuator": (j.actuator.source if j.actuator else None)} for j in robot.joints]
+    manifest["actuators"] = {j.name: {"mode": j.actuator.mode, "kp": j.actuator.kp, "kv": j.actuator.kv,
+                                      "effort": j.actuator.forcerange, "velocity": j.actuator.max_velocity,
+                                      "armature": j.armature if j.armature is not None else j.actuator.armature,
+                                      "source": j.actuator.source}
+                             for j in robot.joints if j.actuator is not None}
     manifest["rotors"] = [{"name": r.name, "link": r.link.name, "pos_mm": r.pos.tolist(), "axis": r.axis.tolist(),
                            "spin": r.spin, "thrust_max_n": r.thrust_max, "torque_ratio_m": r.torque_ratio,
                            "source": r.source} for r in robot.rotors]
@@ -202,8 +243,10 @@ def lowest_point_mm(robot: Robot) -> float:
     return min(p.shape.bounding_box().min.Z for l in robot.links.values() for p in l.parts)
 
 
-def export(robot: Robot, out_dir, base_height: float | str = "auto") -> Path:
-    """base_height: metres to lift the root, or "auto" to rest the lowest geometry on z=0."""
+def export(robot: Robot, out_dir, base_height: float | str = "auto", keyframes: dict | None = None) -> Path:
+    """base_height: metres to lift the root, or "auto" to rest the lowest geometry on z=0.
+    keyframes: {name: joint pose}; each becomes an MJCF keyframe (a floating robot is set down
+    on the floor; position actuators hold the pose; torque motors start at zero)."""
     out_dir = Path(out_dir)
     if base_height == "auto":
         base_height = -lowest_point_mm(robot) * 1e-3
@@ -217,7 +260,25 @@ def export(robot: Robot, out_dir, base_height: float | str = "auto") -> Path:
             key = spec.add_key(name="hover")
             key.qpos = list(model.qpos0)
             key.ctrl = list(u)
-            spec.compile()
+            model = spec.compile()
+    if keyframes and not robot.rotors and not model.neq:
+        from .sim import place_on_floor
+        d = mujoco.MjData(model)
+        for name, pose in keyframes.items():
+            if robot.floating:
+                place_on_floor(model, d, pose)
+            else:
+                mujoco.mj_resetData(model, d)
+                for jn, v in pose.items():
+                    d.qpos[model.jnt_qposadr[model.joint(jn).id]] = v
+            ctrl = []
+            for i in range(model.nu):
+                jn = model.joint(model.actuator_trnid[i, 0]).name
+                ctrl.append(float(d.qpos[model.jnt_qposadr[model.joint(jn).id]])
+                            if model.actuator_biastype[i] != 0 else 0.0)
+            key = spec.add_key(name=name)
+            key.qpos, key.ctrl = list(d.qpos), ctrl
+        spec.compile()
     xml = spec.to_xml().replace(f'meshdir="{abs_mesh}', 'meshdir="meshes')
     (out_dir / "robot.xml").write_text(xml)
     (out_dir / "scene.xml").write_text(SCENE.format(name=robot.name))
