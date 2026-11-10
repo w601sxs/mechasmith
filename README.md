@@ -72,6 +72,10 @@ How parts get attached:
   drives a joint remotely through a belt or rod. `collision="box"|"sphere"|"capsule"|...` fits primitive
   collision shapes, `contact=` sets friction and softness, `asm.touch` adds foot sensors, and every
   build exports `home` and pose keyframes. `mirror(axes="same")` keeps both sides' axes (Unitree).
+- `asm.chain(parent, [ChainJoint(name, at, axis, range, actuator, hub=, mass=), ...])` builds a limb from
+  a joint table (how a URDF describes arms and humanoids): motors on the parent side, flanges and
+  struts on the child side, no overlaps by construction, `hub=None` for cross pieces. `mass=` (or
+  `Component.mass_budget`) is the whole link's mass; its structure takes what the motors leave.
 - `asm.robot()` groups rigidly connected parts into links; `joint` splits them.
   `robot.mirror("left_", "right_")` then makes the other side.
 
@@ -185,4 +189,10 @@ everything returned is a build123d shape, so it is still there for anything unus
   drives, the `same` mirror convention, primitive collisions and contact settings, foot sensors,
   keyframes and an axis-based stand test. Round 2: all 12 axes on the Menagerie model's, 14.85 kg vs
   15.21 kg, feet within 2 mm, stands on its PD gains; torso roll inertia still 43% low.
-- Next: Unitree G1, then Hello Robot Stretch 3 (the leader arm), one CLI, tests, packaging.
+- Unitree G1 (`designs/g1.py`), implement → critique → improve → reimplement
+  ([docs/iterations/g1.md](docs/iterations/g1.md)). Round 1 had wrong right-side roll ranges, a
+  shoulder axis 32 degrees off and 32 overlaps at home. That drove `asm.chain`, mass budgets, the
+  `closest` mirror convention, dampratio, sensor noise, the pin rule, and two fixes (floor placement of
+  primitive shapes, a clean JSON stdout). Round 2: all 29 axes on the Menagerie model's, no overlaps,
+  and the stand test matches the reference's (0.0 vs -0.1 degrees, 0.7 mm settle each).
+- Next: Hello Robot Stretch 3 (the leader arm), one CLI, tests, packaging.

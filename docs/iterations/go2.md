@@ -28,6 +28,7 @@ same world axes.
 - `ActuatorModel.mode = "torque"`: an MJCF torque motor (ctrl in N·m); kp/kv become the suggested
   PD gains, written to the manifest.
 - `Robot.mirror(axes="same")`: both sides keep the same world axes (Unitree, many ROS robots).
+  (Generalised in the G1 round to `closest`, which `same` now means.)
   `mirror` now also copies sensors and rotors.
 - Per-part `collision="box" | "sphere" | "cylinder" | "capsule"` (fitted primitives) and
   `contact=dict(friction=, condim=, solimp=, priority=)`.
@@ -48,7 +49,8 @@ same world axes.
 - No collisions at home. The hips' swing is carved out of the torso. What still limits a joint
   is legs meeting legs: the two feet under the body at −0.96 rad of inward abduction, a rear
   foot reaching a front calf.
-- Stands on its PD gains (stiffness ratio 1.51, settles at −8°).
+- Stands on its PD gains (stiffness ratio 1.51, settles at −8°; it sinks ~67 mm as the low Isaac
+  Lab gains let the knees give. An earlier "100 mm drop" was a floor-placement bug fixed in the G1 round).
 - URDF matches the MJCF in MuJoCo and yourdfpy.
 
 ## Still open

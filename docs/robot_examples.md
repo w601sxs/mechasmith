@@ -194,7 +194,7 @@ Done:
 Next, in order:
 4. **Unitree Go2** (the dog), *done, see docs/iterations/go2.md*: actuators from motor specs (gear ratio, rotor inertia, torque and
    speed limits), mirroring in two planes, the RL sensor suite, the Isaac Lab handoff.
-5. **Unitree G1** (the humanoid): humanoid scale (~29 joints, several motor classes), arms and
+5. **Unitree G1** (the humanoid), *done, see docs/iterations/g1.md*: humanoid scale (~29 joints, several motor classes), arms and
    legs as mirrored sub-assemblies, a waist chain.
 6. **Hello Robot Stretch 3**: prismatic joints (a lift, a telescoping arm in coupled stages),
    wheels (continuous joints, velocity control, rolling contact), a mobile base, cameras.

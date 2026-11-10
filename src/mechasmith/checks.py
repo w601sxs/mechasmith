@@ -35,6 +35,16 @@ class PosedGeometry:
                                       tri_verts=np.asarray(tm.faces, np.uint32)))
             self.parts.append((name, int(m.geom_bodyid[g]), man, v))
         self.joint_names = [m.joint(i).name for i in range(m.njnt) if m.jnt_type[i] == mujoco.mjtJoint.mjJNT_HINGE]
+        # Pins may overlap the parts they join: hinge joints with a pin radius (from the manifest)
+        # excuse overlap inside that radius for body pairs one or two joints apart.
+        import json
+        man = Path(scene_xml).parent / "manifest.json"
+        self.pins = {}
+        if man.exists():
+            for b in json.loads(man.read_text())["bodies"].values():
+                jd = b.get("joint")
+                if jd and jd.get("pin_mm"):
+                    self.pins[jd["name"]] = jd["pin_mm"] * 1e-3
 
     def set_pose(self, q: dict[str, float]):
         from .sim import solve_pose
@@ -51,6 +61,33 @@ class PosedGeometry:
         aabb_v = v @ R.T + p
         return man.transform(T), aabb_v.min(0), aabb_v.max(0)
 
+    def _pins_between(self, b1: int, b2: int):
+        """Pinned joints on the tree path between two bodies, if they are at most two joints apart."""
+        m = self.model
+        def up(b):
+            return [j for j in range(m.body_jntadr[b], m.body_jntadr[b] + m.body_jntnum[b])
+                    if m.jnt_type[j] == mujoco.mjtJoint.mjJNT_HINGE]
+        for lo, hi in ((b1, b2), (b2, b1)):
+            path, b = [], lo
+            for _ in range(2):
+                path += up(b)
+                b = m.body_parentid[b]
+                if b == hi:
+                    names = [m.joint(j).name for j in path]
+                    return [(n, self.pins[n]) for n in names if n in self.pins]
+        return []
+
+    def _pin_solid(self, joint_name: str, r: float):
+        m, d = self.model, self.data
+        j = m.joint(joint_name).id
+        p, a = d.xanchor[j], d.xaxis[j]
+        cyl = mf.Manifold.cylinder(1.0, r, r, 64, True)              # along z, centred, length 1 m
+        z = a / np.linalg.norm(a)
+        x = np.cross(z, [1.0, 0, 0]) if abs(z[0]) < 0.9 else np.cross(z, [0, 1.0, 0])
+        x /= np.linalg.norm(x)
+        R = np.column_stack([x, np.cross(z, x), z])
+        return cyl.transform(np.hstack([R, p[:, None]]))
+
     def collisions(self) -> list[dict]:
         posed = [self._posed(i) for i in range(len(self.parts))]
         hits = []
@@ -60,7 +97,12 @@ class PosedGeometry:
             (a, alo, ahi), (b, blo, bhi) = posed[i], posed[j]
             if np.any(alo > bhi) or np.any(blo > ahi):
                 continue
-            vol = (a ^ b).volume()
+            inter = a ^ b
+            for jn, r in self._pins_between(self.parts[i][1], self.parts[j][1]):
+                if inter.volume() <= TOL_M3:
+                    break
+                inter = inter - self._pin_solid(jn, r)
+            vol = inter.volume()
             if vol > TOL_M3:
                 hits.append({"a": self.parts[i][0], "b": self.parts[j][0],
                              "overlap_mm3": round(vol * 1e9, 1)})

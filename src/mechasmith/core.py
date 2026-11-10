@@ -43,6 +43,7 @@ class ActuatorModel:
     max_velocity: float        # rad/s, no-load (used for URDF + checks)
     source: str = ""           # where these numbers came from
     mode: str = "position"     # "position" | "torque"
+    dampratio: float | None = None   # position mode: damping as a ratio of critical (MuJoCo works out kv)
 
 
 @dataclass
@@ -55,6 +56,7 @@ class Part:
                                        # primitive "box", "sphere", "cylinder", "capsule"
     mass_override: float | None = None # kg, for bought parts with known mass
     contact: dict | None = None        # MJCF contact settings: friction, condim, solimp, solref, priority
+    mass_budget: float | None = None   # kg: the whole link weighs this; this part takes what the rest leaves
 
     def mirrored(self, name: str, plane: str = "XZ") -> "Part":
         """Mirror image of this part across a world plane through the origin."""
@@ -131,6 +133,7 @@ class Joint:
     springref: float = 0.0             # rad
     damping: float | None = None       # N*m*s/rad; None: the actuator's
     armature: float | None = None
+    pin: float = 0.0                   # mm: the pin may overlap both sides within this radius
 
 
 class Robot:
@@ -171,6 +174,23 @@ class Robot:
         self.joints.append(j)
         return j
 
+    def resolve_budgets(self) -> list[str]:
+        """Give every part with a mass budget what its link's other parts leave (after mirroring
+        and anything else that adds parts). Returns notes for budgets the other parts exceed."""
+        notes = []
+        for link in self.links.values():
+            for part in link.parts:
+                if part.mass_budget is None:
+                    continue
+                others = sum(p.mass_properties()[0] for p in link.parts if p is not part)
+                want = part.mass_budget - others
+                if want < 0.05 * part.mass_budget:
+                    notes.append(f"{link.name}: other parts weigh {others:.3f} kg, over the {part.mass_budget:.3f} kg budget")
+                    want = 0.05 * part.mass_budget
+                part.mass_override = want
+        self.budget_notes = notes
+        return notes
+
     def print_settings(self, infill: float | None = None, wall_mm: float | None = None,
                        materials: tuple[str, ...] = ("PLA",)) -> "Robot":
         """Reprint every printed part made of `materials` with another infill and/or wall
@@ -209,12 +229,12 @@ class Robot:
             This is the URDF/ROS habit and what microduck_rl uses.
         axes="pseudo": the axis is reflected as a rotation axis, so the same joint value
             gives the mirror-image motion and ranges stay as they are.
-        axes="same": both sides keep the same world axes and ranges (Unitree's convention):
-            joints whose axis lies in the mirror plane need opposite values for symmetric
-            motion, the others the same values.
+        axes="closest" (alias "same"): each joint is reflected whichever way keeps its axis
+            closest to the original, so axes point the same way on both sides (Unitree, most
+            ROS robots): pitch-like joints keep their range, roll and yaw joints mirror it.
         """
-        if axes not in ("vector", "pseudo", "same"):
-            raise ValueError("axes must be 'vector', 'pseudo' or 'same'")
+        if axes not in ("vector", "pseudo", "closest", "same"):
+            raise ValueError("axes must be 'vector', 'pseudo' or 'closest'")
         _, M = MIRROR_PLANES[plane]
 
         def rename(n: str) -> str:
@@ -239,11 +259,14 @@ class Robot:
             axis = M @ j.axis if axes == "vector" else -(M @ j.axis)
             lo, hi = j.range
             rng = (-hi, -lo) if axes == "vector" else (lo, hi)
-            if axes == "same":
-                axis = j.axis.copy()
+            if axes in ("closest", "same"):
+                # reflect as a direction or as a rotation axis, whichever stays closest to the original
+                v, pz = M @ j.axis, -(M @ j.axis)
+                axis, rng = (v, (-hi, -lo)) if np.dot(v, j.axis) >= np.dot(pz, j.axis) else (pz, (lo, hi))
+            keep = axes == "pseudo" or (axes in ("closest", "same") and rng == j.range)
             self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator,
-                           stiffness=j.stiffness, springref=j.springref if axes == "pseudo" else -j.springref,
-                           damping=j.damping, armature=j.armature)
+                           stiffness=j.stiffness, springref=j.springref if keep else -j.springref,
+                           damping=j.damping, armature=j.armature, pin=j.pin)
         for a, b, p in list(self.loops):
             if a.name.startswith(src) or b.name.startswith(src):
                 self.loops.append((self.links[rename(a.name)] if a.name.startswith(src) else a,
@@ -252,9 +275,9 @@ class Robot:
             if f.startswith(src) or l.startswith(src):
                 self.couplings.append((rename(f) if f.startswith(src) else f, rename(l) if l.startswith(src) else l, r))
         radius = getattr(self, "site_radius", {})
-        for kind, site in list(self.sensors):
+        for kind, site, *opts in list(self.sensors):
             if site.startswith(src):
-                self.sensors.append((kind, rename(site)))
+                self.sensors.append((kind, rename(site), *opts))
                 if site in radius:
                     radius[rename(site)] = radius[site]
         for r in [r for r in self.rotors if r.name.startswith(src)]:

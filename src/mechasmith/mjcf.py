@@ -47,6 +47,7 @@ def _primitive(part, origin_mm):
 
 def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.MjSpec:
     out_dir = Path(out_dir)
+    robot.resolve_budgets()
     mesh_dir = out_dir / "meshes"
     mesh_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,12 +123,18 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
         manifest["bodies"][link.name] = {"origin_mm": origin.tolist(), "mass": m, "parts": parts_meta,
                                          "parent": pj.parent.name if pj else None,
                                          "joint": None if pj is None else {"name": pj.name, "axis": pj.axis.tolist(),
-                                                                          "range": list(pj.range)}}
+                                                                          "range": list(pj.range), "pin_mm": pj.pin}}
         for j in robot.children(link):
             add_link(j.child, body, origin)
 
     add_link(robot.root, spec.worldbody, np.zeros(3))
 
+    # Cross pieces (two joints through one point, a universal joint): the bodies on either side
+    # of the cross are two joints apart, so MuJoCo would let them collide at the pin; exclude them.
+    for j in robot.joints:
+        pj = robot.parent_joint(j.parent)
+        if pj is not None and np.linalg.norm(j.anchor - pj.anchor) < max(j.pin, pj.pin) + 1.0:
+            spec.add_exclude(bodyname1=pj.parent.name, bodyname2=j.child.name)
     # Closed loops: each pin becomes a connect constraint (its anchor in the first body's frame;
     # MuJoCo finds the matching point in the second at the home pose). Pinned bodies do not collide.
     for la, lb, p in robot.loops:
@@ -148,8 +155,10 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
              "framequat": mujoco.mjtSensor.mjSENS_FRAMEQUAT, "framepos": mujoco.mjtSensor.mjSENS_FRAMEPOS,
              "framelinvel": mujoco.mjtSensor.mjSENS_FRAMELINVEL, "frameangvel": mujoco.mjtSensor.mjSENS_FRAMEANGVEL,
              "touch": mujoco.mjtSensor.mjSENS_TOUCH}
-    for kind, site in robot.sensors:
-        spec.add_sensor(name=f"{site}_{kind}", type=kinds[kind], objtype=mujoco.mjtObj.mjOBJ_SITE, objname=site)
+    for kind, site, *opts in robot.sensors:
+        sen = spec.add_sensor(name=f"{site}_{kind}", type=kinds[kind], objtype=mujoco.mjtObj.mjOBJ_SITE, objname=site)
+        for k, v in (opts[0] if opts else {}).items():
+            setattr(sen, k, v)
     for j in robot.joints:
         a = j.actuator
         if a is None:
@@ -162,7 +171,10 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
             act.set_to_motor()
             act.ctrlrange = [-a.forcerange, a.forcerange]
         else:
-            act.set_to_position(kp=a.kp, kv=a.kv)
+            if a.dampratio is not None:
+                act.set_to_position(kp=a.kp, dampratio=a.dampratio)
+            else:
+                act.set_to_position(kp=a.kp, kv=a.kv)
             act.ctrlrange = list(j.range)
 
     manifest["joints"] = [{"name": j.name, "parent": j.parent.name, "child": j.child.name,

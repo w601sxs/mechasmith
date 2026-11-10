@@ -63,6 +63,27 @@ def main(argv=None):
         print(json.dumps(load_design(args.design).describe(), indent=2))
         return
 
+    # Keep stdout for the JSON report: anything else (geometry-kernel warnings printed from C++,
+    # library prints) goes to stderr while the build runs.
+    import os
+    sys.stdout.flush()
+    saved = os.dup(1)
+    os.dup2(2, 1)
+    try:
+        report = _build(args)
+    finally:
+        sys.stdout.flush()
+        try:                                  # C-level stdio buffers too (OpenCascade prints there)
+            import ctypes
+            ctypes.CDLL(None).fflush(None)
+        except Exception:
+            pass
+        os.dup2(saved, 1)
+        os.close(saved)
+    print(json.dumps(report, indent=2))
+
+
+def _build(args) -> dict:
     t0 = time.time()
     dz = load_design(args.design)
     overrides = _parse_sets(args.set)
@@ -104,7 +125,7 @@ def main(argv=None):
     report["viewer"] = str(viewer.write_viewer(out, {"home": home, **dz.poses}, report))
     report["timing_s"] = {"export": round(t_export, 1), "total": round(time.time() - t0, 1)}
     (out / "report.json").write_text(json.dumps(report, indent=2))
-    print(json.dumps(report, indent=2))
+    return report
 
 
 if __name__ == "__main__":

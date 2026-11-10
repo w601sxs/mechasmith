@@ -115,6 +115,7 @@ class Component:
     collision: bool | str = False
     mass_override: float | None = None
     contact: dict | None = None
+    mass_budget: float | None = None   # kg: this part's link weighs this in all; the part takes the rest
     connectors: dict[str, np.ndarray] = field(default_factory=dict)
     sites: dict[str, tuple] = field(default_factory=dict)   # local frame, mm
     pose: np.ndarray | None = None                           # set when placed
@@ -420,7 +421,7 @@ class Assembly:
         self.edges.append(_Edge(a, b, "joint", dict(
             name=name, anchor=at, axis=unit(axis), range=tuple(range), actuator=actuator,
             child_link=child_link or f"{name}_link",
-            dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature))))
+            dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature, pin=pin))))
 
     def rotor(self, name: str, part: Component, at, axis=(0, 0, 1.0), *, spin: int, thrust_max: float,
               torque_ratio: float, source: str = "") -> None:
@@ -438,10 +439,14 @@ class Assembly:
                                                          thrust_max=thrust_max, torque_ratio=torque_ratio,
                                                          source=source)]
 
-    def imu(self, site: str, kinds=("gyro", "accelerometer", "framequat")) -> None:
+    def imu(self, site: str, kinds=("gyro", "accelerometer", "framequat"), noise: dict | None = None,
+            cutoff: dict | None = None) -> None:
         """IMU sensors at a site (declared on a part's `sites`). Add "framelinvel",
-        "frameangvel" and "framepos" for the body velocities and position RL policies observe."""
-        self.sensors = getattr(self, "sensors", []) + [(k, site) for k in kinds]
+        "frameangvel" and "framepos" for the body velocities and position RL policies observe.
+        `noise` and `cutoff` map a kind to its MJCF noise (std dev) and cutoff."""
+        self.sensors = getattr(self, "sensors", []) + [
+            (k, site, {kk: vv for kk, vv in (("noise", (noise or {}).get(k)), ("cutoff", (cutoff or {}).get(k)))
+                       if vv is not None}) for k in kinds]
 
     def touch(self, site: str, radius: float) -> None:
         """A contact (touch) sensor: a sphere of `radius` mm round a site, e.g. a foot."""
@@ -451,6 +456,13 @@ class Assembly:
     def couple(self, follower: str, leader: str, ratio: float = 1.0) -> None:
         """q_follower = ratio * q_leader (one motor driving two joints)."""
         self.couplings = getattr(self, "couplings", []) + [(follower, leader, float(ratio))]
+
+    def chain(self, parent: Component, joints: list, **kw) -> dict:
+        """A limb from a joint table (see mechasmith.limbs.ChainJoint): motors on the parent side,
+        flanges and struts on the child side, no overlaps by construction. Returns the child
+        structures by joint name."""
+        from .limbs import build_chain
+        return build_chain(self, parent, joints, **kw)
 
     def link(self, name: str, *, around: ServoUnit | None = None, on: Component | None = None, path=None,
              width: float = 24.0, holds=None, add=(), cut=(), clear=(), wall: float = 2.5, cheek: float = 4.0,
@@ -514,7 +526,8 @@ class Assembly:
         for c in self.components.values():
             ln = group_name[find(c.name)]
             link = links.setdefault(ln, Link(ln))
-            link.add(Part(c.name, c.world_shape, c.material, c.color, c.collision, c.mass_override, c.contact))
+            link.add(Part(c.name, c.world_shape, c.material, c.color, c.collision, c.mass_override, c.contact,
+                          getattr(c, "mass_budget", None)))
             link.sites.update({k: tuple(c.point(v)) for k, v in c.sites.items()})
         robot = Robot(self.name, links[self.root_link], floating=self.floating)
         for e in joints:

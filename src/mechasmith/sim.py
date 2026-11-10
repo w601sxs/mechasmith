@@ -26,8 +26,23 @@ def _lowest_collision_z(m, d) -> float:
             w = v @ d.geom_xmat[g].reshape(3, 3).T + d.geom_xpos[g]
             zmin = min(zmin, w[:, 2].min())
         else:
-            zmin = min(zmin, d.geom_xpos[g][2] - m.geom_rbound[g])
+            zmin = min(zmin, _primitive_bottom(m, d, g))
     return float(zmin)
+
+
+def _primitive_bottom(m, d, g) -> float:
+    """Lowest z of a primitive geom (exact for sphere, box, capsule, cylinder)."""
+    R, z, s = d.geom_xmat[g].reshape(3, 3), d.geom_xpos[g][2], m.geom_size[g]
+    t = m.geom_type[g]
+    if t == mujoco.mjtGeom.mjGEOM_SPHERE:
+        return z - s[0]
+    if t == mujoco.mjtGeom.mjGEOM_BOX:
+        return z - float(np.abs(R[2]) @ s)
+    if t == mujoco.mjtGeom.mjGEOM_CAPSULE:
+        return z - abs(R[2, 2]) * s[1] - s[0]
+    if t == mujoco.mjtGeom.mjGEOM_CYLINDER:
+        return z - abs(R[2, 2]) * s[1] - s[0] * np.sqrt(max(0.0, 1 - R[2, 2] ** 2))
+    return z - m.geom_rbound[g]
 
 
 def _support_margin(points_xy: np.ndarray, com_xy: np.ndarray) -> float | None:
