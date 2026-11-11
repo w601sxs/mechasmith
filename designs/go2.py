@@ -12,13 +12,25 @@ Layout, joint ranges and masses measured from the Menagerie `unitree_go2` model;
 our own. Joint and body names match the reference, and so does Unitree's axis convention (both
 sides share the same world axes).
 """
-from mechasmith import (ALUMINIUM, BOUGHT, GO_M8010_6, TPU, Assembly, Component, box, color, cyl, design, extrude,
-                        motor, param, polygon, swept_link)
+from mechasmith import (ABS, ALUMINIUM, as_mesh, BOUGHT, GO_M8010_6, TPU, Assembly, Component, box, color, cyl, design, enclose,
+                        extrude, motor, param, polygon, sweep, swept_link, turn)
 
 BLACK, METAL, GRAY, WHITE = color("#000000"), color("#e6f2f2"), color("#abb1c5"), color("#ffffff")
 X, Y, Z = (1.0, 0, 0), (0, 1.0, 0), (0, 0, 1.0)
 M = GO_M8010_6
 FOOT_CONTACT = dict(friction=[0.8, 0.02, 0.01], condim=6, priority=1, solimp=[0.015, 1, 0.022, 0.5, 2.0])
+# Cover sections measured from the Menagerie Go2 meshes (t along the axis, then up lo/hi and
+# across lo/hi, mm; across = axis x up): the torso along +x from the body origin (up +z,
+# across -y), the thigh and calf down -z from the thigh joint and the knee (up +x, across -y).
+TORSO = [(-128, -77, 63, -97, 97), (-86, -77, 63, -97, 97), (-44, -57, 60, -97, 97), (-3, -57, 59, -97, 97),
+         (39, -57, 65, -97, 97), (81, -96, 80, -97, 97), (123, -96, 82, -97, 97), (165, -84, 89, -97, 97),
+         (207, -59, 89, -64, 65), (248, -97, 89, -64, 65), (290, -97, 81, -64, 65), (332, -97, 73, -45, 45)]
+THIGH = [(-51, -48, 46, -15, 57), (-16, -48, 48, -17, 57), (19, -48, 48, -17, 57), (54, -44, 44, -12, 57),
+         (88, -39, 19, -11, 13), (123, -37, 9, -12, 14), (158, -36, 7, -15, 19), (193, -33, 15, -16, 19),
+         (227, -29, 15, -16, 19)]
+CALF = [(-31, -20, 15, -7, 9), (2, -20, 16, -15, 15), (36, -20, 22, -17, 17), (69, -13, 28, -17, 17),
+        (102, -2, 32, -17, 17), (136, 2, 32, -15, 15), (169, -21, 32, -18, 18), (203, -26, 31, -20, 20),
+        (236, -26, 25, -20, 20)]
 STAND = {f"{leg}_{j}": v for leg in ("FL", "FR", "RL", "RR") for j, v in (("thigh_joint", 0.9), ("calf_joint", -1.8))}
 
 
@@ -35,6 +47,8 @@ STAND = {f"{leg}_{j}": v for leg in ("FL", "FR", "RL", "RR") for j, v in (("thig
         shell_g=param(1300.0, (400, 2500), "torso shell and frame"),
         torso_half_width=param(47.0, (47, 90), "half width of the torso between the hip modules (wider costs abduction range)"),
         thigh_wall=param(5.0, (2, 8), "wall of the hollow thigh casting"),
+        covers=param(False, doc="moulded covers over the torso, thighs and calves, shaped to the Go2's measured sections"),
+        cover_wall=param(2.0, (1.0, 4.0), "wall of the moulded covers"),
     ),
     home=STAND,
 )
@@ -54,7 +68,8 @@ def build(p):
     torso = shell + bridge + head
     for r in rooms:
         torso = torso - r
-    base = Component.world("base", torso, BOUGHT, BLACK, collision="box", mass_override=p.shell_g / 1000)
+    frame_g = p.shell_g / 2 if p.covers else p.shell_g
+    base = Component.world("base", torso, BOUGHT, BLACK, collision="box", mass_override=frame_g / 1000)
     asm = Assembly("go2", root=base, floating=True, root_link="base")
     battery = asm.attach(base, Component.world("battery", box((-80, -43, -54), (80, 43, -14)), BOUGHT, GRAY,
                                                mass_override=p.battery_g / 1000))
@@ -63,6 +78,7 @@ def build(p):
     base.sites["imu"] = (-25.6, 0.0, 42.3)
     asm.imu("imu", ("gyro", "accelerometer", "framequat", "framelinvel", "frameangvel", "framepos"))
 
+    leg_sweeps = []
     for leg, sx in (("FL", 1), ("RL", -1)):
         x = sx * hx
         thigh_range = (-1.5708, 3.4907) if sx > 0 else (-0.5236, 4.5379)
@@ -95,17 +111,48 @@ def build(p):
         thigh.connector("knee_motor_seat", at=(x, ly, 0), normal=Y, x=Z, check=False)
         asm.fasten(thigh.c("knee_motor_seat"), knee_motor.case.c("back"))
         asm.lock(knee_motor)
-        # Calf in the leg plane, beside the thigh, and a rubber foot.
         cy = p.leg_y
+        # Calf in the leg plane, beside the thigh, and a rubber foot.
         tube = cyl((x, cy, kz - p.calf_len / 2 + 10), Z, 12, p.calf_len - 20) - cyl(
             (x, cy, kz - p.calf_len / 2 + 10), Z, 6, p.calf_len - 30)
-        calf = tube + cyl((x, cy, kz), Y, 15, 24)
-        calf = Component.world(f"{leg}_calf_link", calf, ALUMINIUM, GRAY, collision="capsule")
+        calf_shape = tube + cyl((x, cy, kz), Y, 15, 24)
+        foot_shape = cyl((x, cy, kz - p.calf_len), Y, 22, 24) - cyl((x, cy, kz - p.calf_len), Y, 8, 30)
+        if p.covers:
+            # Moulded covers shaped to the Go2's own sections (measured from Menagerie), grown
+            # wherever our parts would poke through, each with a web resting on its parts. The
+            # thigh cover is cut where the calf and its cover fold past the knee.
+            calf_cover = enclose([calf_shape], (0, 0, -1.0), X, wall=p.cover_wall, radius=12, sections=CALF,
+                                 origin=(x, cy, kz), web=True, clear=[box((x - 60, cy - 40, kz - p.calf_len - 80),
+                                                                          (x + 60, cy + 40, kz - p.calf_len + 30))],
+                                 clip=box((x - 100, ly + 0.5, kz - 400), (x + 100, cy + 100, kz + 100)))
+            calf_moves = sweep([calf_shape, foot_shape, calf_cover], (x, cy, kz), Y, (-2.7227, -0.83776))
+            thigh_cover = enclose([beam - hollow, knee_motor.case.world_shape], (0, 0, -1.0), X, wall=p.cover_wall,
+                                  radius=18, sections=THIGH, origin=(x, cy, 0), web=True, clear=[calf_moves],
+                                  clip=box((x - 200, ty + 0.5, kz - 100), (x + 200, 400, 100)))
+            asm.attach(thigh, Component.world(f"{leg}_thigh_cover", thigh_cover, ABS, METAL))
+        calf = Component.world(f"{leg}_calf_link", calf_shape, ALUMINIUM, GRAY, collision="capsule")
         asm.hinge(f"{leg}_calf_joint", thigh, calf, (x, cy, kz), Y, (-2.7227, -0.83776),
                   actuator=knee_motor.drive(), child_link=f"{leg}_calf")
-        foot = Component.world(f"{leg}_foot", cyl((x, cy, kz - p.calf_len), Y, 22, 24) - cyl(
-            (x, cy, kz - p.calf_len), Y, 8, 30), TPU, BLACK, collision="sphere", contact=FOOT_CONTACT)
+        if p.covers:
+            asm.attach(calf, Component.world(f"{leg}_calf_cover", calf_cover, ABS, METAL))
+        foot = Component.world(f"{leg}_foot", foot_shape, TPU, BLACK, collision="sphere", contact=FOOT_CONTACT)
         asm.attach(calf, foot).sites[f"{leg}_foot"] = (x, cy, kz - p.calf_len)
         asm.touch(f"{leg}_foot", radius=23.0)
+        if p.covers:
+            # The leg as it sits at home, for the torso cover to clear as the hip swings.
+            calf_home = [turn(as_mesh(s_), (x, cy, kz), Y, STAND[f"{leg}_calf_joint"])
+                         for s_ in (calf_shape, foot_shape, calf_cover)]
+            moving = [as_mesh(s_) for s_ in (thigh.world_shape, knee_motor.case.world_shape, thigh_cover)] + calf_home
+            moving = [turn(m, (x, my, 0), Y, STAND[f"{leg}_thigh_joint"]) for m in moving]
+            leg_sweeps += [sweep(moving, (x, hy, 0), X, (-1.0472, 1.0472)),
+                           sweep([m.mirror((0, 1.0, 0)) for m in moving], (x, -hy, 0), X, (-1.0472, 1.0472))]
+    if p.covers:
+        # One cover over the torso and the four abduction motors, cut where the hip modules and
+        # the legs (at home) swing past; it carries the other half of the shell's mass.
+        abd_x = hx - (M.diameter / 2 + 3) - M.flange_thickness - M.length / 2
+        abd = [cyl((sx * abd_x, sy * hy, 0), X, M.diameter / 2, M.length) for sx in (1, -1) for sy in (1, -1)]
+        cover = enclose([torso, *abd], X, Z, wall=p.cover_wall, radius=25, sections=TORSO, origin=(0, 0, 0), web=True,
+                        clear=rooms + leg_sweeps)
+        asm.attach(base, Component.world("torso_cover", cover, BOUGHT, WHITE, mass_override=p.shell_g / 2000))
     robot = asm.robot()
     return robot.mirror("FL_", "FR_", axes="same").mirror("RL_", "RR_", axes="same")

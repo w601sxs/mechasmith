@@ -346,9 +346,16 @@ class Assembly:
         if part.pose is None:
             raise AttachmentError(f"attach: {part.name} has no position; make it with Component.world(...) "
                                   f"or connect it with fasten(...)")
-        gap = base.world_shape.distance_to(part.world_shape)
-        if gap > TOUCH_MM and _overlap(base.world_shape, part.world_shape):
-            gap = 0.0                                   # one sits inside the other: that touches too
+        a, b = base.world_shape, part.world_shape
+        if getattr(a, "_mesh", None) is not None or getattr(b, "_mesh", None) is not None:
+            # covers from `enclose` are faceted: measure on their exact meshes (much faster)
+            from .shells import _to_manifold
+            ma, mb = _to_manifold(a), _to_manifold(b)
+            gap = 0.0 if (ma ^ mb).volume() > 1e-3 else ma.min_gap(mb, 10 * TOUCH_MM)
+        else:
+            gap = a.distance_to(b)
+            if gap > TOUCH_MM and _overlap(a, b):
+                gap = 0.0                               # one sits inside the other: that touches too
         if gap > TOUCH_MM:
             raise AttachmentError(f"{part.name} does not touch {base.name}: the gap is {gap:.2f} mm")
         self._register(part)

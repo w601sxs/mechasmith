@@ -41,7 +41,7 @@ def _parse_sets(pairs: list[str]) -> dict:
         try:
             out[k] = json.loads(v)
         except json.JSONDecodeError:
-            out[k] = v
+            out[k] = {"True": True, "False": False, "None": None}.get(v, v)     # Python spellings too
     return out
 
 

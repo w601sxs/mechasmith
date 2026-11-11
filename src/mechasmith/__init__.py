@@ -14,8 +14,8 @@ from .design import Design, Param, Params, design, param, symmetric
 from .geom import BACK, DOWN, FWD, LEFT, RIGHT, UP, box, circle, color, cyl, diamonds, tray, extrude, move, polygon, rect, slot
 from .limbs import ChainJoint
 from .links import Hold, bearing, printed, swept_link
-from .materials import ALUMINIUM, BOUGHT, PLA, PLA_SOLID, STEEL, TPU, Material
-from .shells import arch, loft_body, loft_cavity, loft_shell, rounded_box, rounded_box_cavity, rounded_box_shell
+from .materials import ABS, ALUMINIUM, BOUGHT, FR4, PLA, PLA_SOLID, STEEL, TPU, Material
+from .shells import arch, as_mesh, enclose, enclose_sections, loft_body, loft_cavity, loft_shell, rounded_box, rounded_box_cavity, rounded_box_shell, sweep, turn
 
 __all__ = [
     # designs

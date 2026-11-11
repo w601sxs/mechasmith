@@ -14,6 +14,7 @@ uv run mechasmith build designs/duck_leg.py     # writes build/duck_leg/{scene.x
 uv run --with yourdfpy python scripts/check_urdf.py build/so101   # URDF matches the MJCF (masses, inertias, joints, frames)
 uv run python benchmarks/compare_leg.py build/duck_leg   # compare against Microduck's reference numbers
 uv run python scripts/sweep_param.py designs/duck_leg.py foot_reach left_ankle 12,14,16
+uv run python scripts/compare_looks.py <reference.xml> build/go2/robot.xml --png looks.png --bodies   # outline overlap, 3 views
 ```
 
 ## Writing a design
@@ -89,7 +90,13 @@ uv run mechasmith build designs/microduck.py --set battery_g=80 --set shin_len=4
 
 Geometry helpers, all from `mechasmith`: `UP DOWN FWD BACK LEFT RIGHT`, `box`, `cyl`, `rect`, `slot`,
 `circle`, `polygon`, `extrude(outline, plane, at, center, depth)`, `move`, `color("#ff661f")`, and shells
-(`loft_shell`, `arch`, `rounded_box_shell`); `polygon(points, round=)` outlines any plate or link. Designs need no build123d import;
+(`loft_shell`, `arch`, `rounded_box_shell`); `polygon(points, round=)` outlines any plate or link.
+Covers: `enclose(shapes, axis, up, wall=, ...)` lofts a smooth hollow cover round a group of parts,
+fitted to them or to given `sections` (measured from a drawing or a reference mesh with
+`enclose_sections`; `contain=True` grows them where the parts would poke through), with an inner
+`web` that rests on the parts; `sweep(shapes, anchor, axis, range)` is the region a link sweeps
+about a joint and `turn` poses shapes, for `enclose(clear=[...])`. Covers are exact mesh booleans
+turned into faceted solids. Designs need no build123d import;
 everything returned is a build123d shape, so it is still there for anything unusual.
 
 ## Conventions
@@ -189,6 +196,10 @@ everything returned is a build123d shape, so it is still there for anything unus
   drives, the `same` mirror convention, primitive collisions and contact settings, foot sensors,
   keyframes and an axis-based stand test. Round 2: all 12 axes on the Menagerie model's, 14.85 kg vs
   15.21 kg, feet within 2 mm, stands on its PD gains; torso roll inertia still 43% low.
+  Covers experiment (`--set covers=True`): moulded torso, thigh and calf covers shaped to sections
+  measured from the Menagerie meshes raise the outline overlap (`scripts/compare_looks.py`) from
+  0.654 to 0.706. The rest of the gap is our part layout (the covers grow to hold parts the real
+  ones don't), and the covers cut the thigh range, so they are off by default.
 - Unitree G1 (`designs/g1.py`), implement → critique → improve → reimplement
   ([docs/iterations/g1.md](docs/iterations/g1.md)). Round 1 had wrong right-side roll ranges, a
   shoulder axis 32 degrees off and 32 overlaps at home. That drove `asm.chain`, mass budgets, the

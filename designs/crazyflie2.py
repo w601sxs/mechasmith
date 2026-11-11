@@ -12,10 +12,8 @@ centre, z up, motors at (+-32.7, +-32.7) mm, 92 mm motor to motor.
 """
 import numpy as np
 
-from mechasmith import BOUGHT, Assembly, Component, Material, box, color, cyl, design, extrude, param, polygon
+from mechasmith import ABS, BOUGHT, FR4, Assembly, Component, box, color, cyl, design, extrude, param, polygon
 
-FR4 = Material("FR4", 1850)                 # circuit board
-ABS = Material("ABS (moulded)", 1050)       # injection-moulded mounts and props
 BLACK, GREEN, GOLD = color("#1a1a1a"), color("#1c2f00"), color("#f7e099")
 SILVER, WHITE, PROP, BATT = color("#e5e5e5"), color("#ffffff"), color("#caD1ee"), color("#a1a8ad")
 UP = (0, 0, 1.0)

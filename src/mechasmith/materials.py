@@ -31,4 +31,6 @@ PLA_SOLID = Material("PLA (100%)", 1240, printed=True, infill=1.0)
 TPU = Material("TPU", 1210, printed=True, infill=0.3, wall_mm=1.2)
 ALUMINIUM = Material("Aluminium 6061", 2700)
 STEEL = Material("Steel", 7850)
+ABS = Material("ABS (moulded)", 1050)         # injection-moulded covers, mounts, props
+FR4 = Material("FR4", 1850)                   # circuit board
 BOUGHT = Material("bought part (mass override)", 1000)  # density unused when mass_override set
