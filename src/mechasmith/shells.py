@@ -295,7 +295,7 @@ def _to_manifold(shape):
     if cached is not None:
         v, f, lo, hi = cached
         bb = shape.bounding_box()
-        if np.allclose(lo, tuple(bb.min), atol=1e-3) and np.allclose(hi, tuple(bb.max), atol=1e-3):
+        if np.allclose(lo, tuple(bb.min), atol=0.5) and np.allclose(hi, tuple(bb.max), atol=0.5):
             return mf.Manifold(mf.Mesh(vert_properties=v, tri_verts=f))
     v, f = shape.tessellate(0.05, 0.15)
     tm = trimesh.Trimesh(np.array([tuple(p) for p in v], float), np.asarray(f, int), process=True)
@@ -307,7 +307,7 @@ def _to_manifold(shape):
 def _to_solid(m):
     """A build123d faceted solid from a manifold3d mesh: each closed surface becomes a solid,
     or a void in the smallest solid around it."""
-    from build123d import Compound, Solid
+    from build123d import Compound, Shell, Solid
     from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakePolygon, BRepBuilderAPI_MakeSolid, \
         BRepBuilderAPI_Sewing
     from OCP.gp import gp_Pnt
@@ -346,6 +346,7 @@ def _to_solid(m):
         else:
             outers.append([sh, lo, hi, []])
     solids = []
+    expect = m.volume()
     for sh, _, _, voids in outers:
         mk = BRepBuilderAPI_MakeSolid(sh)
         for vsh in voids:
@@ -360,7 +361,12 @@ def _to_solid(m):
             while ex.More():
                 solids.append(Solid(TopoDS.Solid(ex.Current())))
                 ex.Next()
-    return solids[0] if len(solids) == 1 else Compound(solids)
+    out = solids[0] if len(solids) == 1 else Compound(solids)
+    if abs(out.volume - expect) > 0.01 * expect:
+        # OpenCascade could not close it into solids; keep the sewn surface for its extent. The
+        # mesh (cached by the callers) carries the volume, mass properties and export.
+        return Compound([Shell(sh) for _, sh, _, _ in shells])
+    return out
 
 
 def _centre(shapes):

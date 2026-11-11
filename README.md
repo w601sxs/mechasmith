@@ -96,7 +96,10 @@ fitted to them or to given `sections` (measured from a drawing or a reference me
 `enclose_sections`; `contain=True` grows them where the parts would poke through), with an inner
 `web` that rests on the parts; `sweep(shapes, anchor, axis, range)` is the region a link sweeps
 about a joint and `turn` poses shapes, for `enclose(clear=[...])`. Covers are exact mesh booleans
-turned into faceted solids. Designs need no build123d import;
+turned into faceted solids. Attach a cover with `Component.world(..., clear_motion=True)` and it is
+cut clear of everything that moves past it at export, after mirroring (each joint swept through
+its range with the others at home, as the joint sweep check does): covers never take range from a
+joint. A parent-side cover wins over child-side ones; see `src/mechasmith/covers.py`. Designs need no build123d import;
 everything returned is a build123d shape, so it is still there for anything unusual.
 
 ## Conventions
@@ -198,8 +201,9 @@ everything returned is a build123d shape, so it is still there for anything unus
   15.21 kg, feet within 2 mm, stands on its PD gains; torso roll inertia still 43% low.
   Covers experiment (`--set covers=True`): moulded torso, thigh and calf covers shaped to sections
   measured from the Menagerie meshes raise the outline overlap (`scripts/compare_looks.py`) from
-  0.654 to 0.706. The rest of the gap is our part layout (the covers grow to hold parts the real
-  ones don't), and the covers cut the thigh range, so they are off by default.
+  0.654 to 0.711, with every joint keeping its full range (`clear_motion`). The rest of the gap is
+  our part layout: the covers grow to hold parts the real ones don't, and they are cut wherever
+  our legs pass. Off by default (the covered build takes ~80 s against 1.5 s).
 - Unitree G1 (`designs/g1.py`), implement → critique → improve → reimplement
   ([docs/iterations/g1.md](docs/iterations/g1.md)). Round 1 had wrong right-side roll ranges, a
   shoulder axis 32 degrees off and 32 overlaps at home. That drove `asm.chain`, mass budgets, the

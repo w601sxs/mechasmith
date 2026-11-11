@@ -57,24 +57,39 @@ class Part:
     mass_override: float | None = None # kg, for bought parts with known mass
     contact: dict | None = None        # MJCF contact settings: friction, condim, solimp, solref, priority
     mass_budget: float | None = None   # kg: the whole link weighs this; this part takes what the rest leaves
+    clear_motion: bool = False         # a cover: cut clear of everything that moves past it, at export
 
     def mirrored(self, name: str, plane: str = "XZ") -> "Part":
         """Mirror image of this part across a world plane through the origin."""
-        return replace(self, name=name, shape=mirror(self.shape, about=MIRROR_PLANES[plane][0]))
+        shape = mirror(self.shape, about=MIRROR_PLANES[plane][0])
+        cached = getattr(self.shape, "_mesh", None)
+        if cached is not None:                       # a faceted cover: mirror its mesh too
+            M = MIRROR_PLANES[plane][1]
+            bb = shape.bounding_box()
+            shape._mesh = ((cached[0] @ M.T).astype(np.float32), cached[1][:, ::-1].copy(), tuple(bb.min), tuple(bb.max))
+        return replace(self, name=name, shape=shape)
 
     # ---- mass properties (SI) ------------------------------------------
     def mass_properties(self) -> tuple[float, np.ndarray, np.ndarray]:
         """Return (mass kg, com m (world), inertia about com kg*m^2 (world axes))."""
-        vol_mm3 = self.shape.volume
+        cached = getattr(self.shape, "_mesh", None)
+        if cached is not None:                      # a cover: its exact mesh is the shape
+            import trimesh
+            tm = trimesh.Trimesh(cached[0].astype(float), cached[1], process=False)
+            vol_mm3, area, com_mm, i_unit = tm.volume, tm.area / 1.0, tm.center_mass, tm.moment_inertia
+        else:
+            vol_mm3, area = self.shape.volume, self.shape.area
+            com_mm = tuple(self.shape.center(CenterOf.MASS))
+            # matrix_of_inertia is for unit density, in mm^5, about the centre of mass.
+            i_unit = np.array(self.shape.matrix_of_inertia, dtype=float)
         if vol_mm3 <= 0:
             raise ValueError(f"part {self.name!r} has non-positive volume")
         if self.mass_override is not None:
             mass = self.mass_override
         else:
-            mass = self.material.effective_mass(vol_mm3, self.shape.area)
-        com = np.array(tuple(self.shape.center(CenterOf.MASS))) * 1e-3
-        # matrix_of_inertia is for unit density, in mm^5, about the centre of mass.
-        i_unit = np.array(self.shape.matrix_of_inertia, dtype=float)
+            mass = self.material.effective_mass(vol_mm3, area)
+        com = np.array(com_mm, float) * 1e-3
+        i_unit = np.asarray(i_unit, float)
         # Scale so the inertia corresponds to the actual mass, assuming the
         # mass is distributed like the solid (a stated approximation for
         # infilled prints and bought parts).
@@ -173,6 +188,11 @@ class Robot:
         self.links[child.name] = child
         self.joints.append(j)
         return j
+
+    def resolve_covers(self, home: dict | None = None) -> list[str]:
+        """Cut every `clear_motion` cover clear of what moves past it (see covers.py)."""
+        from .covers import resolve_covers
+        return resolve_covers(self, home)
 
     def resolve_budgets(self) -> list[str]:
         """Give every part with a mass budget what its link's other parts leave (after mirroring

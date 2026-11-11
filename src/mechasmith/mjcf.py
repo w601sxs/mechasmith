@@ -20,6 +20,11 @@ EQ_SOLREF, EQ_SOLIMP = [0.005, 1.0], [0.95, 0.99, 0.001, 0.5, 2.0]   # stiff loo
 
 def _export_part_mesh(part, origin_mm, path: Path):
     from build123d import Pos
+    cached = getattr(part.shape, "_mesh", None)
+    if cached is not None:                          # a cover: write its exact mesh
+        import trimesh
+        trimesh.Trimesh(cached[0].astype(float) - origin_mm, cached[1], process=False).export(str(path))
+        return
     shape = Pos(*(-origin_mm)) * part.shape
     export_stl(shape, str(path), tolerance=0.05, angular_tolerance=0.15)
 
@@ -259,6 +264,7 @@ def export(robot: Robot, out_dir, base_height: float | str = "auto", keyframes: 
     """base_height: metres to lift the root, or "auto" to rest the lowest geometry on z=0.
     keyframes: {name: joint pose}; each becomes an MJCF keyframe (a floating robot is set down
     on the floor; position actuators hold the pose; torque motors start at zero)."""
+    robot.resolve_covers((keyframes or {}).get("home"))
     out_dir = Path(out_dir)
     if base_height == "auto":
         base_height = -lowest_point_mm(robot) * 1e-3

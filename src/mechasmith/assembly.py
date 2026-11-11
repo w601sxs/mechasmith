@@ -116,6 +116,7 @@ class Component:
     mass_override: float | None = None
     contact: dict | None = None
     mass_budget: float | None = None   # kg: this part's link weighs this in all; the part takes the rest
+    clear_motion: bool = False         # a cover: cut clear of everything that moves past it, at export
     connectors: dict[str, np.ndarray] = field(default_factory=dict)
     sites: dict[str, tuple] = field(default_factory=dict)   # local frame, mm
     pose: np.ndarray | None = None                           # set when placed
@@ -534,7 +535,7 @@ class Assembly:
             ln = group_name[find(c.name)]
             link = links.setdefault(ln, Link(ln))
             link.add(Part(c.name, c.world_shape, c.material, c.color, c.collision, c.mass_override, c.contact,
-                          getattr(c, "mass_budget", None)))
+                          getattr(c, "mass_budget", None), c.clear_motion))
             link.sites.update({k: tuple(c.point(v)) for k, v in c.sites.items()})
         robot = Robot(self.name, links[self.root_link], floating=self.floating)
         for e in joints:
