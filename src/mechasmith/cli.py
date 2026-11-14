@@ -57,6 +57,8 @@ def main(argv=None):
     b.add_argument("--out", type=Path, default=None)
     b.add_argument("--no-sweep", action="store_true", help="skip the joint sweep interference check")
     b.add_argument("--steps", type=int, default=24)
+    b.add_argument("--sim", choices=["mjx"], default=None,
+                   help="also write a training model, robot_<sim>.xml (primitive collisions, no meshes, floor)")
     args = ap.parse_args(argv)
 
     if args.cmd == "describe":
@@ -90,7 +92,8 @@ def _build(args) -> dict:
     robot = dz.build(**overrides)
     out = args.out or Path("build") / args.design.stem
     out.mkdir(parents=True, exist_ok=True)
-    scene = mjcf.export(robot, out, base_height=dz.base_height, keyframes={"home": dz.home, **dz.poses})
+    scene = mjcf.export(robot, out, base_height=dz.base_height, keyframes={"home": dz.home, **dz.poses},
+                        sim=args.sim)
     lift = 0.0 if robot.floating else (-mjcf.lowest_point_mm(robot) * 1e-3 if dz.base_height == "auto"
                                        else float(dz.base_height))
     urdf_path = urdf.export(robot, out, base_height=lift)
@@ -99,6 +102,8 @@ def _build(args) -> dict:
     manifest = json.loads((out / "manifest.json").read_text())
     report = {"design": str(args.design), "params": dz.resolve(**overrides).as_dict(), "out": str(out),
               "scene": str(scene), "urdf": str(urdf_path), "mass": checks.mass_report(manifest)}
+    if args.sim:
+        report["sim_model"] = str(out / f"robot_{args.sim}.xml")
     home = dz.home
     if args.no_sweep:
         pg = checks.PosedGeometry(scene)

@@ -86,12 +86,12 @@ def trunk(p) -> Assembly:
     shell -= box((p.neck_x - 28, -19, p.neck_z - 12), (x1 + 1, 19, z1 + 1))   # neck notch, 60 deg tilt back
     shell -= box((x0 - 1, -20, z0 - 1), (-30, 20, z0 + w + 1))                # battery slot
     left = Component.world("trunk_shell_left", shell & box((x0 - 1, 0, z0 - 1), (x1 + 1, hw + 1, z1 + 1)),
-                           PLA, SHELL_L, collision=True)
+                           PLA, SHELL_L, collision="box")
     left.connector("neck_seat", at=(p.neck_x, 0, z0 + w), normal=UP, x=FWD)
     left.sites["imu"] = (-10.0, 0.0, 20.0)
     asm = Assembly("microduck", root=left)
     asm.attach(left, Component.world("trunk_shell_right", shell & box((x0 - 1, -hw - 1, z0 - 1), (x1 + 1, 0, z1 + 1)),
-                                     PLA, SHELL, collision=True))
+                                     PLA, SHELL, collision="box"))
     # plate across the top of the hip-yaw servos (they end at x = 9.5), filling the shell wall to wall;
     # it stops at x = 8 so the neck servo can tilt forward past it
     hip_plate = asm.attach(left, Component.world("hip_plate", box((-26, -50, 11.5), (8, 50, 14)) & cavity, PLA,
@@ -170,7 +170,7 @@ def left_leg(asm: Assembly, p) -> None:
     cup = asm.link("left_foot", around=ankle, path=[ankle.anchor, (xa, yc, z_sole + 12)], width=20, add=[tub],
                    cheek=2.5, gap=0.3, round=1.5, back_cheek=False, color=ORANGE)   # the shin holds the back
     sole = asm.attach(cup, Component.world("left_sole", tray(core, "XY", at=z_sole, depth=13.0, wall=2.0, round=8.0),
-                                           TPU, YELLOW, collision=True))
+                                           TPU, YELLOW, collision="box"))
     sole.sites["left_foot"] = (xa, yc, z_sole)
 
 
@@ -253,9 +253,9 @@ def head(asm: Assembly, p, roll, origin) -> None:
         "head_motor_support", box((rx - 11.5, -60, top_of_roll), (rx + 11.5, 60, top_of_roll + 2.5)) & cavity,
         PLA, DARK))
     top = asm.attach(support, Component.world("head_top_shell", at(shell & box((-80, -60, HEAD_SPLIT), (80, 60, 60))),
-                                              PLA, SHELL, collision=True))
+                                              PLA, SHELL, collision="box"))
     asm.attach(top, Component.world("head_bottom_shell", at(shell & box((-80, -60, HEAD_BOTTOM - 1), (80, 60, HEAD_SPLIT))),
-                                    PLA, ORANGE, collision=True))
+                                    PLA, ORANGE, collision="box"))
     # Face plate fills the recess out to the shell walls.
     face = extrude(arch(face_w + 6, face_h, 23, 3), "YZ", at=fx - 11, center=(0, face_c), depth=1.5) & loft_cavity(
         **{**loft, "wall": 0.0})

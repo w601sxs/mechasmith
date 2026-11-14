@@ -6,6 +6,7 @@ Agent-first robot design: CAD as Python code → computed mass properties → MJ
 uv run mechasmith build designs/so101.py        # SO-101 arm (6x STS3215): MJCF, sweeps, arm check, viewer
 uv run python scripts/compare_joints.py <reference.xml> build/so101 --site gripper=gripper
 uv run mechasmith build designs/microduck.py    # Pollen's Microduck, reverse-engineered as code-CAD
+uv run mechasmith build designs/microduck.py --sim mjx   # also a training model: build/microduck/robot_mjx.xml
 uv run python scripts/compare_render.py <reference scene.xml> build/microduck designs/microduck.py compare.png
 uv run python benchmarks/compare_microduck.py build/microduck   # axis-line placement and masses vs Microduck
 uv run python scripts/sweep_balance.py designs/microduck.py battery_g 40,70,100   # CoM vs ankles per value
@@ -101,6 +102,15 @@ cut clear of everything that moves past it at export, after mirroring (each join
 its range with the others at home, as the joint sweep check does): covers never take range from a
 joint. A parent-side cover wins over child-side ones; see `src/mechasmith/covers.py`. Designs need no build123d import;
 everything returned is a build123d shape, so it is still there for anything unusual.
+
+## Training models
+
+`--sim mjx` (or `mjcf.export(..., sim="mjx")`) also writes `robot_mjx.xml`: one self-contained file
+for GPU training with MJX. It keeps the bodies, joints, inertias, actuators, sensors, sites and
+keyframes, drops the visual meshes, turns every collision shape into a primitive (mesh collisions
+become fitted boxes; declare `collision="box"` etc. on parts to choose), lets the robot touch only
+the floor, adds the floor, and uses a 4 ms step with a lighter solver. The build checks that it
+loads (and in MJX, when JAX is installed).
 
 ## Conventions
 - One world frame at the home pose: millimetres, x forward, y left, z up. Drawn parts

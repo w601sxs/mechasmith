@@ -6,6 +6,7 @@ joint's anchor, so world-frame authoring maps 1:1 onto the model at qpos=0.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import mujoco
@@ -50,11 +51,19 @@ def _primitive(part, origin_mm):
     raise ValueError(f"part {part.name}: collision must be True, 'mesh', 'box', 'sphere', 'cylinder' or 'capsule'")
 
 
-def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.MjSpec:
+# Training models (`export(..., sim="mjx")`): what changes from the full model.
+SIM = {"mjx": dict(timestep=0.004, iterations=4, ls_iterations=8)}
+
+
+def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0, sim: str | None = None) -> mujoco.MjSpec:
+    """The MJCF spec. With `sim` (e.g. "mjx") it is a training model instead: no visual meshes,
+    every collision shape a primitive (mesh collisions become fitted boxes), the robot touching
+    only the floor (no self-collision), a floor in the same file, and solver settings from SIM."""
     out_dir = Path(out_dir)
     robot.resolve_budgets()
     mesh_dir = out_dir / "meshes"
-    mesh_dir.mkdir(parents=True, exist_ok=True)
+    if sim is None:
+        mesh_dir.mkdir(parents=True, exist_ok=True)
 
     spec = mujoco.MjSpec()
     spec.modelname = robot.name
@@ -98,6 +107,15 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
         parts_meta = []
         for part in link.parts:
             fname = f"{part.name}.stl"
+            if sim is not None:
+                if part.collision:
+                    kind = "box" if part.collision in (True, "mesh") else part.collision
+                    t, size, pos, quat = _primitive(replace(part, collision=kind), origin)
+                    geom = body.add_geom(name=f"{part.name}_collision", type=t, size=list(size), pos=list(pos),
+                                         quat=quat, density=0, contype=1, conaffinity=0, rgba=part.color)
+                    for k, v in (part.contact or {}).items():
+                        setattr(geom, k, v)
+                continue
             _export_part_mesh(part, origin, mesh_dir / fname)
             mesh = spec.add_mesh(name=part.name, file=fname)
             mesh.scale = [1e-3] * 3
@@ -197,7 +215,14 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0) -> mujoco.
     manifest["loops"] = [{"a": a.name, "b": b.name, "anchor_mm": p.tolist()} for a, b, p in robot.loops]
     manifest["couplings"] = [{"follower": f, "leader": l, "ratio": r} for f, l, r in robot.couplings]
     manifest["total_mass"] = robot.total_mass()
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    if sim is None:
+        (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    else:
+        for k, v in SIM[sim].items():
+            setattr(spec.option, k, v)
+        spec.worldbody.add_geom(name="floor", type=mujoco.mjtGeom.mjGEOM_PLANE, size=[10, 10, 0.1], contype=0,
+                                conaffinity=1, rgba=[0.8, 0.8, 0.82, 1])
+        spec.worldbody.add_light(pos=[0, 0, 3], dir=[0, 0, -1])
     return spec
 
 
@@ -260,17 +285,8 @@ def lowest_point_mm(robot: Robot) -> float:
     return min(p.shape.bounding_box().min.Z for l in robot.links.values() for p in l.parts)
 
 
-def export(robot: Robot, out_dir, base_height: float | str = "auto", keyframes: dict | None = None) -> Path:
-    """base_height: metres to lift the root, or "auto" to rest the lowest geometry on z=0.
-    keyframes: {name: joint pose}; each becomes an MJCF keyframe (a floating robot is set down
-    on the floor; position actuators hold the pose; torque motors start at zero)."""
-    robot.resolve_covers((keyframes or {}).get("home"))
-    out_dir = Path(out_dir)
-    if base_height == "auto":
-        base_height = -lowest_point_mm(robot) * 1e-3
-    spec = build_spec(robot, out_dir, base_height)
-    abs_mesh = str((out_dir / "meshes").resolve())
-    spec.meshdir = abs_mesh
+def _with_keys(spec, robot: Robot, keyframes: dict | None):
+    """Compile `spec`, adding the hover key (rotorcraft) and one key per keyframe pose."""
     model = spec.compile()  # raises with a clear message if the model is invalid
     if robot.rotors and robot.floating:
         u = hover_thrusts(model)
@@ -296,9 +312,43 @@ def export(robot: Robot, out_dir, base_height: float | str = "auto", keyframes: 
                             if model.actuator_biastype[i] != 0 else 0.0)
             key = spec.add_key(name=name)
             key.qpos, key.ctrl = list(d.qpos), ctrl
-        spec.compile()
+        model = spec.compile()
+    return model
+
+
+def export(robot: Robot, out_dir, base_height: float | str = "auto", keyframes: dict | None = None,
+           sim: str | None = None) -> Path:
+    """base_height: metres to lift the root, or "auto" to rest the lowest geometry on z=0.
+    keyframes: {name: joint pose}; each becomes an MJCF keyframe (a floating robot is set down
+    on the floor; position actuators hold the pose; torque motors start at zero).
+    sim: also write a training model, `robot_<sim>.xml` (e.g. robot_mjx.xml; see build_spec):
+    one self-contained file with the same bodies, joints, inertias, actuators, sensors, sites
+    and keyframes, primitive collisions only and a floor."""
+    robot.resolve_covers((keyframes or {}).get("home"))
+    out_dir = Path(out_dir)
+    if base_height == "auto":
+        base_height = -lowest_point_mm(robot) * 1e-3
+    spec = build_spec(robot, out_dir, base_height)
+    abs_mesh = str((out_dir / "meshes").resolve())
+    spec.meshdir = abs_mesh
+    _with_keys(spec, robot, keyframes)
     xml = spec.to_xml().replace(f'meshdir="{abs_mesh}', 'meshdir="meshes')
     (out_dir / "robot.xml").write_text(xml)
     (out_dir / "scene.xml").write_text(SCENE.format(name=robot.name))
     mujoco.MjModel.from_xml_path(str(out_dir / "scene.xml"))  # round-trip check
+    if sim is not None:
+        if sim not in SIM:
+            raise ValueError(f"sim must be one of {sorted(SIM)}")
+        sspec = build_spec(robot, out_dir, base_height, sim=sim)
+        _with_keys(sspec, robot, keyframes)
+        path = out_dir / f"robot_{sim}.xml"
+        path.write_text(sspec.to_xml())
+        model = mujoco.MjModel.from_xml_path(str(path))  # round-trip check
+        if sim == "mjx":
+            try:
+                from mujoco import mjx
+            except ImportError:
+                pass                                       # MJX needs JAX; checked where it is installed
+            else:
+                mjx.put_model(model)
     return out_dir / "scene.xml"
