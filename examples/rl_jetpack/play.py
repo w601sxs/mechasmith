@@ -1,11 +1,13 @@
 """Run a trained jet-pack duck policy through a course and render it.
 
-usage: python play.py <policy.b64 | policy.pkl> [--out course.gif] [--box 0.15]
+usage: python play.py <policy.b64 | policy.pkl> [--out course.gif] [--box 0.15 | --puddle 0.5]
 
 Course: stand, walk forward to a box (--box m tall, 0.4 m long) and on past it at standing height
 (the policy decides how: step, hop or fly), a moon run (fans carry 80 % of the weight), then a flight (climb to 0.6 m, fly forward, hover),
 land, and walk on. The policy runs in the training environment (CPU, MJX); the motion is replayed
 on the full mechasmith model with the box added, exhaust plumes sized by each fan's thrust.
+With --puddle L the course is a long jump instead: run up and over an L m puddle, then the moon
+run, flight and landing as before.
 """
 import argparse
 import base64
@@ -21,13 +23,14 @@ from brax.training.acme import running_statistics
 from brax.training.agents.ppo import networks as ppo_networks
 from PIL import Image, ImageDraw
 
-from jet_env import BOX_HALF, JetDuck
+from jet_env import BOX_HALF, PUDDLE_HALF_W, JetDuck
 
 ROOT = Path(__file__).resolve().parents[2]
 ap = argparse.ArgumentParser()
 ap.add_argument("policy")
 ap.add_argument("--out", default="course.gif")
 ap.add_argument("--box", type=float, default=0.15)
+ap.add_argument("--puddle", type=float, default=None, help="long-jump course over a puddle this long (m)")
 ap.add_argument("--scene", default=str(ROOT / "build/microduck_jetpack/scene.xml"))
 ap.add_argument("--fps", type=int, default=15)
 a = ap.parse_args()
@@ -46,10 +49,12 @@ nets = ppo_networks.make_ppo_networks(env.observation_size, env.action_size,
 act = jax.jit(ppo_networks.make_inference_fn(nets)((normalizer, policy), deterministic=True))
 step, reset = jax.jit(env.step), jax.jit(env.reset)
 
-BOX_X = 0.8
+BOX_X, PUD_NEAR = 0.8, 1.2
+PUD = None if a.puddle is None else (PUD_NEAR + a.puddle / 2, a.puddle / 2)
 # (command [vx, vy, yaw rate, height above standing, lightness], seconds, label)
 SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
-          ((0.25, 0.0, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead"),
+          ((0.25, 0.0, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead") if PUD is None else
+          ((0.8, 0.0, 0.0, 0.0, 0.0), 5.0, f"run and jump: a {100 * a.puddle:.0f} cm puddle"),
           ((0.7, 0.0, 0.0, 0.0, 0.8), 5.0, "moon run (fans carry 80%)"),
           ((0.0, 0.0, 0.0, 0.5, 0.0), 3.0, "take off"),
           ((0.6, 0.0, 0.0, 0.5, 0.0), 4.0, "fly forward"),
@@ -58,7 +63,9 @@ SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
           ((0.2, 0.0, 0.0, 0.0, 0.0), 4.0, "walk")]
 
 state = reset(jax.random.PRNGKey(1))
-info = dict(state.info, obstacle=jp.array(True), airborne=jp.array(False), box=jp.array([BOX_X, a.box]),
+info = dict(state.info, obstacle=jp.array(PUD is None), puddle=jp.array(PUD is not None), airborne=jp.array(False),
+            box=jp.array([BOX_X, a.box] if PUD is None else [50.0, 0.0]),
+            pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()),
             passed=jp.array(False), cmd_now=jp.zeros(5), thrust=jp.zeros(2))
 state = state.replace(info=info)
 frames_q, frames_t, frames_l, log = [], [], [], []
@@ -84,8 +91,10 @@ for cmd, secs, label in SCRIPT:
     print(json.dumps(log[-1]))
     if fell:
         break
-past = max(q[0] for q in frames_q) > BOX_X + BOX_HALF[0]
-print(json.dumps({"box_m": a.box, "got_past_box": bool(past), "fell": fell,
+far = BOX_X + BOX_HALF[0] if PUD is None else PUD[0] + PUD[1]
+past = max(q[0] for q in frames_q) > far
+print(json.dumps({"obstacle": f"box {a.box} m" if PUD is None else f"puddle {a.puddle} m", "got_past": bool(past),
+                  "fell": fell,
                   "max_height_m": round(float(max(q[2] for q in frames_q)), 2)}))
 
 
@@ -108,8 +117,12 @@ def add_plumes(scene, m, d, sites, throttle):
 
 # Replay on the full model with the box, render with plumes.
 spec = mujoco.MjSpec.from_file(a.scene)
-box = spec.worldbody.add_body(name="obstacle", pos=[BOX_X, 0, a.box - BOX_HALF[2]])
-box.add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, size=list(BOX_HALF), rgba=[0.55, 0.6, 0.7, 1])
+if PUD is None:
+    box = spec.worldbody.add_body(name="obstacle", pos=[BOX_X, 0, a.box - BOX_HALF[2]])
+    box.add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, size=list(BOX_HALF), rgba=[0.55, 0.6, 0.7, 1])
+else:   # water: a thin translucent slab, drawn only
+    spec.worldbody.add_geom(type=mujoco.mjtGeom.mjGEOM_BOX, pos=[PUD[0], 0, 0.001], size=[PUD[1], PUDDLE_HALF_W, 0.001],
+                            rgba=[0.2, 0.5, 0.95, 0.7], contype=0, conaffinity=0)
 m = spec.compile()
 d = mujoco.MjData(m)
 w, h = 480, 360

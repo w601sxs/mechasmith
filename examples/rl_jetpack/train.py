@@ -44,7 +44,7 @@ TRAIN = {}   # curriculum numbers from the training metrics (obstacle level, sha
 
 def progress(step, metrics):
     n = max(float(metrics.get("episode/length", EPISODE)), 1)
-    for k in ("level", "flying", "moon", "passed"):
+    for k in ("level", "plevel", "flying", "moon", "passed", "cleared"):
         if f"episode/{k}" in metrics:
             TRAIN[k] = round(float(metrics[f"episode/{k}"]) / n, 3)
     if not any(k.startswith("eval/") for k in metrics):
@@ -76,7 +76,7 @@ def snapshot(step, make_policy, params):   # a policy at every evaluation, for m
 
 make_networks = functools.partial(ppo_networks.make_ppo_networks, policy_hidden_layer_sizes=(256, 256, 128, 128))
 make_policy, params, _ = ppo.train(
-    environment=env, num_timesteps=a.steps, num_evals=4 if a.smoke else 15, episode_length=EPISODE,
+    environment=env, num_timesteps=a.steps, num_evals=4 if a.smoke else 25, episode_length=EPISODE,
     normalize_observations=True, action_repeat=1, unroll_length=20, num_minibatches=4 if a.smoke else 32,
     num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=a.envs,
     batch_size=16 if a.smoke else 256, max_grad_norm=1.0, network_factory=make_networks, seed=0,
