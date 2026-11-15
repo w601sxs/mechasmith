@@ -1,0 +1,135 @@
+<mujoco model="microduck_jetpack">
+  <compiler angle="radian" meshdir="meshes"/>
+
+  <option timestep="0.004" iterations="4" ls_iterations="8"/>
+
+  <size nkey="4"/>
+
+  <worldbody>
+    <geom name="floor" size="10 10 0.1" type="plane" contype="0" rgba="0.8 0.8 0.82 1"/>
+    <light pos="0 0 3"/>
+    <body name="trunk" pos="0 0 0.1155">
+      <inertial pos="-0.0497136 1.45939e-05 0.0105093" quat="0.425839 0.557492 0.582919 0.409963" mass="0.488422" diaginertia="0.000606244 0.000600625 0.000464423"/>
+      <joint name="trunk_freejoint" type="free"/>
+      <geom name="trunk_shell_left_collision" size="0.0405 0.016 0.021" pos="-0.0115 0.016 0.0125" type="box" conaffinity="0" rgba="0.8 0.8 0.8 1" density="0"/>
+      <geom name="trunk_shell_right_collision" size="0.0405 0.016 0.021" pos="-0.0115 -0.016 0.0125" type="box" conaffinity="0" rgba="0.85098 0.85098 0.839216 1" density="0"/>
+      <geom name="jetpack_shell_collision" size="0.02 0.048 0.038" pos="-0.072 0 0.026" type="box" conaffinity="0" rgba="0.85098 0.85098 0.839216 1" density="0"/>
+      <geom name="jet_left_pylon_collision" size="0.00725 0.011 0.011" pos="-0.05475 0.038 0.048" type="box" conaffinity="0" rgba="0.129412 0.14902 0.129412 1" density="0"/>
+      <geom name="jet_right_pylon_collision" size="0.00725 0.011 0.011" pos="-0.05475 -0.038 0.048" type="box" conaffinity="0" rgba="0.129412 0.14902 0.129412 1" density="0"/>
+      <site name="imu" pos="-0.01 0 0.02" group="3"/>
+      <site name="fc_imu" pos="-0.072 0 0.0378" group="3"/>
+      <body name="left_hip_yaw_link" pos="0 0.0175 0">
+        <inertial pos="-0.000431984 0 -0.0317554" quat="0.707015 -0.0114185 -0.0114185 0.707015" mass="0.0195119" diaginertia="3.25231e-06 2.94219e-06 1.56971e-06"/>
+        <joint name="left_hip_yaw" range="-0.436 0.524" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 0 -1" limited="true"/>
+        <body name="left_hip_roll_link" pos="0 0 -0.0265">
+          <inertial pos="0.00922683 0.0102817 0" quat="0.680866 0.680866 0.190843 0.190843" mass="0.00625147" diaginertia="1.2889e-06 1.26591e-06 4.18466e-07"/>
+          <joint name="left_hip_roll" range="-0.384 0.384" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="1 0 0" limited="true"/>
+          <body name="left_hip_pitch_link" pos="-0.002 0.0375 0">
+            <inertial pos="-0.0228179 0.00389102 -0.009231" quat="0.412916 0.459794 0.195071 0.761602" mass="0.0463727" diaginertia="1.9444e-05 1.84041e-05 6.87986e-06"/>
+            <joint name="left_hip_pitch" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+            <body name="left_knee_link" pos="-0.0355 0 -0.022">
+              <inertial pos="0 -0.00869261 -0.029077" quat="0.991539 0.129811 0 0" mass="0.0230883" diaginertia="7.14448e-06 6.5407e-06 2.05706e-06"/>
+              <joint name="left_knee" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 -1 0" limited="true"/>
+              <body name="left_ankle_link" pos="0 -0.005 -0.042">
+                <inertial pos="0.0047045 0.00127936 -0.0177444" quat="-0.0158254 0.724627 -0.0937215 0.682555" mass="0.02138" diaginertia="7.92263e-06 5.42666e-06 4.00038e-06"/>
+                <joint name="left_ankle" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+                <geom name="left_sole_collision" size="0.027 0.02 0.0065" pos="0.0068 0 -0.0185" type="box" conaffinity="0" rgba="0.960784 0.690196 0.141176 1" density="0"/>
+                <site name="left_foot" pos="0 0 -0.025" group="3"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="neck_link" pos="0.02 0.0002 0.0234">
+        <inertial pos="0 -0.000465332 0.025" mass="0.0367826" diaginertia="1.63108e-05 1.55841e-05 3.13393e-06"/>
+        <joint name="neck_pitch" range="-1.571 1.047" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 -1 0" limited="true"/>
+        <body name="head_pitch_link" pos="0 0 0.05">
+          <inertial pos="0 0.000521689 0.0148816" quat="0.785833 0.618439 0 0" mass="0.00987684" diaginertia="1.91697e-06 1.53455e-06 1.07028e-06"/>
+          <joint name="head_pitch" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+          <body name="head_yaw_link" pos="0 -0.0002 0.034">
+            <inertial pos="-0.00164543 -0.00451224 0.000236119" quat="0.0857754 0.699566 -0.100144 0.702297" mass="0.0356974" diaginertia="8.00926e-06 6.05568e-06 5.00352e-06"/>
+            <joint name="head_yaw" range="-2.967 2.967" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 0 1" limited="true"/>
+            <body name="head" pos="-0.0325 0 0">
+              <inertial pos="0.0500645 0.00208162 0.00719379" quat="-0.0299433 0.705382 0.0169907 0.707991" mass="0.178866" diaginertia="0.000366883 0.000297539 0.000159933"/>
+              <joint name="head_roll" range="-0.436 0.436" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="-1 0 0" limited="true"/>
+              <geom name="head_top_shell_collision" size="0.0611471 0.0462225 0.019" pos="0.0353529 6.5877e-12 0.022" type="box" conaffinity="0" rgba="0.85098 0.85098 0.839216 1" density="0"/>
+              <geom name="head_bottom_shell_collision" size="0.0611471 0.0462225 0.01" pos="0.0353529 6.5877e-12 -0.007" type="box" conaffinity="0" rgba="1 0.4 0.121569 1" density="0"/>
+              <site name="head_camera" pos="0.0965 0 0.016" group="3"/>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="jet_left_nacelle" pos="-0.023 0.038 0.048">
+        <inertial pos="0 0.063235 -0.00510663" quat="0.523196 0.475674 -0.475674 0.523196" mass="0.132354" diaginertia="6.37958e-05 6.16559e-05 5.11807e-05"/>
+        <joint name="jet_left_tilt" range="-0.7 0.7" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+        <geom name="jet_left_duct_collision" size="0.0459679 0.0467339 0.028" pos="0 0.0642339 0.001" type="box" conaffinity="0" rgba="0.85098 0.85098 0.839216 1" density="0"/>
+        <site name="jet_left_fan" pos="0 0.065 0.006" group="3"/>
+      </body>
+      <body name="jet_right_nacelle" pos="-0.023 -0.038 0.048">
+        <inertial pos="0 -0.063235 -0.00510663" quat="0.475674 0.523196 -0.523196 0.475674" mass="0.132354" diaginertia="6.37958e-05 6.16559e-05 5.11807e-05"/>
+        <joint name="jet_right_tilt" range="-0.7 0.7" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+        <geom name="jet_right_duct_collision" size="0.0459679 0.0467339 0.028" pos="0 -0.0642339 0.001" type="box" conaffinity="0" rgba="0.85098 0.85098 0.839216 1" density="0"/>
+        <site name="jet_right_fan" pos="0 -0.065 0.006" group="3"/>
+      </body>
+      <body name="right_hip_yaw_link" pos="0 -0.0175 0">
+        <inertial pos="-0.000431984 0 -0.0317554" quat="0.707015 -0.0114185 -0.0114185 0.707015" mass="0.0195119" diaginertia="3.25231e-06 2.94219e-06 1.56971e-06"/>
+        <joint name="right_hip_yaw" range="-0.524 0.436" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 0 -1" limited="true"/>
+        <body name="right_hip_roll_link" pos="0 0 -0.0265">
+          <inertial pos="0.00922683 -0.0102817 0" quat="0.680866 0.680866 -0.190843 -0.190843" mass="0.00625147" diaginertia="1.2889e-06 1.26591e-06 4.18466e-07"/>
+          <joint name="right_hip_roll" range="-0.384 0.384" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="1 0 0" limited="true"/>
+          <body name="right_hip_pitch_link" pos="-0.002 -0.0375 0">
+            <inertial pos="-0.0228179 -0.00389102 -0.009231" quat="0.761602 0.195071 0.459794 0.412916" mass="0.0463727" diaginertia="1.9444e-05 1.84041e-05 6.87986e-06"/>
+            <joint name="right_hip_pitch" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 -1 0" limited="true"/>
+            <body name="right_knee_link" pos="-0.0355 0 -0.022">
+              <inertial pos="0 0.00869261 -0.029077" quat="0.991539 -0.129811 0 0" mass="0.0230883" diaginertia="7.14448e-06 6.5407e-06 2.05706e-06"/>
+              <joint name="right_knee" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 1 0" limited="true"/>
+              <body name="right_ankle_link" pos="0 0.005 -0.042">
+                <inertial pos="0.0047045 -0.00127936 -0.0177444" quat="0.0158254 0.724627 0.0937215 0.682555" mass="0.02138" diaginertia="7.92263e-06 5.42666e-06 4.00038e-06"/>
+                <joint name="right_ankle" range="-1.571 1.571" armature="0.0018" damping="0.053" frictionloss="0.0048" axis="0 -1 0" limited="true"/>
+                <geom name="right_sole_collision" size="0.027 0.02 0.0065" pos="0.0068 0 -0.0185" type="box" conaffinity="0" rgba="0.960784 0.690196 0.141176 1" density="0"/>
+                <site name="right_foot" pos="0 0 -0.025" group="3"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <general name="jet_left_fan" site="jet_left_fan" ctrlrange="0 12" ctrllimited="true" gear="0 0 1 0 0 -0.004"/>
+    <general name="jet_right_fan" site="jet_right_fan" ctrlrange="0 12" ctrllimited="true" gear="0 0 1 0 0 0.004"/>
+    <general name="left_hip_yaw" joint="left_hip_yaw" ctrlrange="-0.436 0.524" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="left_hip_roll" joint="left_hip_roll" ctrlrange="-0.384 0.384" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="left_hip_pitch" joint="left_hip_pitch" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="left_knee" joint="left_knee" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="left_ankle" joint="left_ankle" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="neck_pitch" joint="neck_pitch" ctrlrange="-1.571 1.047" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="head_pitch" joint="head_pitch" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="head_yaw" joint="head_yaw" ctrlrange="-2.967 2.967" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="head_roll" joint="head_roll" ctrlrange="-0.436 0.436" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="jet_left_tilt" joint="jet_left_tilt" ctrlrange="-0.7 0.7" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="3" biasprm="0 -3 -0.05"/>
+    <general name="jet_right_tilt" joint="jet_right_tilt" ctrlrange="-0.7 0.7" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="3" biasprm="0 -3 -0.05"/>
+    <general name="right_hip_yaw" joint="right_hip_yaw" ctrlrange="-0.524 0.436" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="right_hip_roll" joint="right_hip_roll" ctrlrange="-0.384 0.384" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="right_hip_pitch" joint="right_hip_pitch" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="right_knee" joint="right_knee" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+    <general name="right_ankle" joint="right_ankle" ctrlrange="-1.571 1.571" ctrllimited="true" forcelimited="true" forcerange="-0.96 0.96" input="pos" biastype="affine" gainprm="0.55" biasprm="0 -0.55"/>
+  </actuator>
+
+  <sensor>
+    <gyro site="fc_imu" name="fc_imu_gyro"/>
+    <accelerometer site="fc_imu" name="fc_imu_accelerometer"/>
+    <framequat objtype="site" objname="fc_imu" name="fc_imu_framequat"/>
+    <framelinvel objtype="site" objname="fc_imu" name="fc_imu_framelinvel"/>
+    <frameangvel objtype="site" objname="fc_imu" name="fc_imu_frameangvel"/>
+    <framepos objtype="site" objname="fc_imu" name="fc_imu_framepos"/>
+  </sensor>
+
+  <keyframe>
+    <key name="hover" qpos="0 0 0.1155 1 0 0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 -0.00975294 -0.00962273 0 0.0873 0.4579 0.0049 -0.453" ctrl="6.12984 6.10932 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 -0.00975294 -0.00962273 0 0.0873 0.4579 0.0049 -0.453"/>
+    <key name="home" qpos="0 0 0.129394 1 0 0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 0 0 0 0.0873 0.4579 0.0049 -0.453" ctrl="0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 0 0 0 0.0873 0.4579 0.0049 -0.453"/>
+    <key name="tilt_forward" qpos="0 0 0.129394 1 0 0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 0.5 0.5 0 0.0873 0.4579 0.0049 -0.453" ctrl="0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 0.5 0.5 0 0.0873 0.4579 0.0049 -0.453"/>
+    <key name="yaw_left" qpos="0 0 0.129394 1 0 0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 -0.4 0.4 0 0.0873 0.4579 0.0049 -0.453" ctrl="0 0 0 -0.0873 -0.4579 -0.0049 0.453 0.3491 0.3491 0 0 -0.4 0.4 0 0.0873 0.4579 0.0049 -0.453"/>
+  </keyframe>
+</mujoco>
