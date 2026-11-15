@@ -223,36 +223,60 @@ def stand_test(scene_xml: Path, pose: dict, seconds: float = 3.0) -> dict:
     }
 
 
-def hover_test(scene_xml: Path, seconds: float = 3.0, tilt_deg: float = 10.0) -> dict:
+def system_inertia(m, d) -> np.ndarray:
+    """Inertia of the whole robot (joints locked) about its centre of mass, in the root frame."""
+    M = np.zeros((m.nv, m.nv))
+    mujoco.mj_fullM(m, d, M)
+    R = d.xmat[1].reshape(3, 3)
+    c = R.T @ (d.subtree_com[1] - d.xpos[1])
+    mass = m.body_subtreemass[1]
+    return M[3:6, 3:6] - mass * (np.dot(c, c) * np.eye(3) - np.outer(c, c))
+
+
+def hover_test(scene_xml: Path, seconds: float = 3.0, tilt_deg: float = 10.0, pose: dict | None = None,
+               wn: float = 8.0) -> dict:
     """For rotorcraft: can it hover, and with what margin? Reports thrust-to-weight, the
-    hover thrust of each rotor (as a fraction of its maximum), whether the rotor layout can
-    produce thrust and all three moments independently, and a closed-loop check: start
-    tilted by `tilt_deg`, fly a simple attitude and altitude controller through the rotor
-    allocation, and see whether it levels off and holds height."""
-    from .mjcf import allocation, hover_thrusts
+    hover thrust of each rotor (as a fraction of its maximum) and, for tilting rotors, the
+    hover tilt of each nacelle; whether the rotors (and tilt servos) can produce thrust and
+    all three moments independently; and a closed-loop check: start tilted by `tilt_deg`,
+    fly a simple attitude and altitude controller through the linearised allocation (tilt
+    servos commanded as position targets, so their lag is in the loop), and see whether it
+    levels off and holds height. `pose`: the other joints, held by their servos."""
+    from .mjcf import hover_trim, vectoring
     m = mujoco.MjModel.from_xml_path(str(scene_xml))
     d = mujoco.MjData(m)
-    A, hi = allocation(m)
-    if A is None:
+    rot, vec = vectoring(m)
+    if not rot:
         return {"skipped": "no rotors"}
+    hi = m.actuator_ctrlrange[rot, 1]
     mass = float(m.body_subtreemass[1])
     weight = mass * -m.opt.gravity[2]
-    out = {"mass_g": round(mass * 1000, 2), "thrust_to_weight": round(float(hi.sum() / weight), 2),
-           "controllable": bool(np.linalg.matrix_rank(A, tol=1e-9) == 4)}
-    u0 = hover_thrusts(m)
-    out["hover_throttle"] = None if u0 is None else [round(float(x), 3) for x in u0 / hi]
-    if u0 is None or not out["controllable"]:
+    out = {"mass_g": round(mass * 1000, 2), "thrust_to_weight": round(float(hi.sum() / weight), 2)}
+    trim = hover_trim(m, pose)
+    if trim is None:
+        out.update(controllable=False, hover_throttle=None, hovers=False)
+        return out
+    qpos0, ctrl0, free, J = trim
+    out["controllable"] = bool(np.linalg.matrix_rank(J, tol=1e-9) == 4)
+    out["hover_throttle"] = [round(float(x), 3) for x in ctrl0[rot] / hi]
+    if vec:
+        out["hover_tilt_deg"] = {m.actuator(i).name: round(float(np.degrees(ctrl0[i])), 2) for i in vec}
+    if not out["controllable"]:
         out["hovers"] = False
         return out
     # Closed loop, in the air, from a tilted start.
     mujoco.mj_resetData(m, d)
+    d.qpos[:] = qpos0
     d.qpos[2] = 1.0
     t = np.radians(tilt_deg)
     d.qpos[3:7] = [np.cos(t / 2), np.sin(t / 2), 0, 0]
+    d.ctrl[:] = ctrl0
     mujoco.mj_forward(m, d)
-    I = np.diag(m.body_inertia[1])                     # principal; adequate for a symmetric frame
-    Ainv = np.linalg.pinv(A)
-    wn, z0, worst = 8.0, 1.0, 0.0
+    I = system_inertia(m, d)
+    Jinv = np.linalg.pinv(J)
+    w0 = np.array([weight, 0.0, 0.0, 0.0])
+    lo, hi_all = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
+    z0, worst = 1.0, 0.0
     n = int(seconds / m.opt.timestep)
     for k in range(n):
         R = d.xmat[1].reshape(3, 3)
@@ -263,7 +287,9 @@ def hover_test(scene_xml: Path, seconds: float = 3.0, tilt_deg: float = 10.0) ->
         moments = I @ (wn ** 2 * e_b - 2 * wn * w_b)
         az = 4.0 * (z0 - d.qpos[2]) - 3.0 * d.qvel[2]
         thrust = mass * (-m.opt.gravity[2] + az) / max(up[2], 0.3)
-        d.ctrl[:] = np.clip(Ainv @ np.r_[thrust, moments], 0, hi)
+        c = ctrl0.copy()
+        c[free] += Jinv @ (np.r_[thrust, moments] - w0)
+        d.ctrl[:] = np.clip(c, lo, hi_all)
         mujoco.mj_step(m, d)
         if k > n // 2:
             worst = max(worst, float(np.degrees(np.arccos(np.clip(d.xmat[1].reshape(3, 3)[2, 2], -1, 1)))))

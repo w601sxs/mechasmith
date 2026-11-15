@@ -116,7 +116,7 @@ def _build(args) -> dict:
         report["renders"].append(str(render.contact_sheet(scene, out / f"pose_{name}.png", qpos=pose,
                                                           title=f"{robot.name}: {name}")))
     if robot.rotors:
-        report["hover"] = sim.hover_test(scene)
+        report["hover"] = sim.hover_test(scene, pose=home)
     elif robot.floating:
         st = sim.stand_test(scene, home)
         report["stand"] = st
