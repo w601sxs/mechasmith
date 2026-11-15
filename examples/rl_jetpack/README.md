@@ -45,3 +45,37 @@ Rewards: track the speed, turn rate and height; when walking, the gait clock, ai
 steps and level hips from `rl_microduck`; when flying, legs and head held still; upright and
 smooth everywhere; soft touchdowns; and fan energy (costly when walking, cheap when flying), so
 it walks wherever walking works.
+
+## Results (two runs, 600 M steps each, 69 minutes on one H100 each)
+
+Run 1 trained walk / fly / hop / land; run 2 the same plus the moon run (same code as here).
+Neither falls in the course replays; neither learned to get over a tall box by itself.
+
+![run 1: walk to a 15 cm box, fly over it, land, walk](media/run1_15cm_box.gif)
+
+**Run 1** (`5058e47`'s four-number command): on a 5 cm box it walks over with a light fan
+assist. On a 15 cm box it walks up and stops at the edge; on the take-off command it climbs to
+0.5 m (both fans at 52 %, the hand-written controller's hover throttle), flies 2 m over the box,
+hovers, lands on the far side (fans to 0) and walks on: walk to an obstacle, fly over it, land,
+with the flight commanded rather than chosen.
+
+![run 2: the course with a moon run](media/run2_moon_course.gif)
+
+**Run 2**: the whole 5 cm course, including the moon run: 0.54 m/s of 0.7 commanded with the fans
+at 41 % each, i.e. carrying the commanded 80 % of the weight. It is a skim more than a bound:
+both feet are off the ground about half the time but the trunk only rises 12.5-13.7 cm, and it
+does much the same when asked for 0.6 m/s at lightness 0 (faster than it was ever asked to walk,
+so it uses the fans anyway). On the 15 cm box it stops at the edge, and taking off from there it
+catches the box and falls.
+
+What did not work:
+- **The obstacle curriculum stalled** at 3-6 cm in both runs (2-5 cm in run 2): the only pull
+  past a box is speed tracking, which waiting at the box mostly keeps, and a fall in an
+  obstacle episode lowers the box again. So no self-chosen fan-assisted hop yet.
+- **The fans idle while walking** (10-30 %): the walking fan cost (2.0 x thrust fraction) is
+  small next to the tracking rewards.
+- **Moon bounds are low**: nothing rewards height in the air, only air time.
+
+Next run: a bonus for getting past the box and a higher box only after clean passes; a larger
+walking fan cost; and for the moon run, reward the trunk's rise in flight (or a commanded stride
+period) rather than air time alone.
