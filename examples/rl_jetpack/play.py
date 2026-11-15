@@ -3,7 +3,7 @@
 usage: python play.py <policy.b64 | policy.pkl> [--out course.gif] [--box 0.15]
 
 Course: stand, walk forward to a box (--box m tall, 0.4 m long) and on past it at standing height
-(the policy decides how: step, hop or fly), then a flight (climb to 0.6 m, fly forward, hover),
+(the policy decides how: step, hop or fly), a moon run (fans carry 80 % of the weight), then a flight (climb to 0.6 m, fly forward, hover),
 land, and walk on. The policy runs in the training environment (CPU, MJX); the motion is replayed
 on the full mechasmith model with the box added, exhaust plumes sized by each fan's thrust.
 """
@@ -47,23 +47,24 @@ act = jax.jit(ppo_networks.make_inference_fn(nets)((normalizer, policy), determi
 step, reset = jax.jit(env.step), jax.jit(env.reset)
 
 BOX_X = 0.8
-# (command [vx, vy, yaw rate, height above standing], seconds, label)
-SCRIPT = [((0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
-          ((0.25, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead"),
-          ((0.0, 0.0, 0.0, 0.5), 3.0, "take off"),
-          ((0.6, 0.0, 0.0, 0.5), 4.0, "fly forward"),
-          ((0.0, 0.0, 0.0, 0.5), 2.0, "hover"),
-          ((0.0, 0.0, 0.0, 0.0), 3.0, "land"),
-          ((0.2, 0.0, 0.0, 0.0), 4.0, "walk")]
+# (command [vx, vy, yaw rate, height above standing, lightness], seconds, label)
+SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
+          ((0.25, 0.0, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead"),
+          ((0.7, 0.0, 0.0, 0.0, 0.8), 5.0, "moon run (fans carry 80%)"),
+          ((0.0, 0.0, 0.0, 0.5, 0.0), 3.0, "take off"),
+          ((0.6, 0.0, 0.0, 0.5, 0.0), 4.0, "fly forward"),
+          ((0.0, 0.0, 0.0, 0.5, 0.0), 2.0, "hover"),
+          ((0.0, 0.0, 0.0, 0.0, 0.0), 3.0, "land"),
+          ((0.2, 0.0, 0.0, 0.0, 0.0), 4.0, "walk")]
 
 state = reset(jax.random.PRNGKey(1))
 info = dict(state.info, obstacle=jp.array(True), airborne=jp.array(False), box=jp.array([BOX_X, a.box]),
-            passed=jp.array(False), cmd_now=jp.zeros(4), thrust=jp.zeros(2))
+            passed=jp.array(False), cmd_now=jp.zeros(5), thrust=jp.zeros(2))
 state = state.replace(info=info)
 frames_q, frames_t, frames_l, log = [], [], [], []
 fell = False
 for cmd, secs, label in SCRIPT:
-    v, n = np.zeros(4), 0
+    n = 0
     for _ in range(int(secs / env.dt)):
         info = dict(state.info, command=jp.array(cmd), step=jp.array(1))   # hold the command
         state = state.replace(info=info)

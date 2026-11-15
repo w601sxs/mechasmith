@@ -44,7 +44,7 @@ TRAIN = {}   # curriculum numbers from the training metrics (obstacle level, sha
 
 def progress(step, metrics):
     n = max(float(metrics.get("episode/length", EPISODE)), 1)
-    for k in ("level", "flying", "passed"):
+    for k in ("level", "flying", "moon", "passed"):
         if f"episode/{k}" in metrics:
             TRAIN[k] = round(float(metrics[f"episode/{k}"]) / n, 3)
     if not any(k.startswith("eval/") for k in metrics):

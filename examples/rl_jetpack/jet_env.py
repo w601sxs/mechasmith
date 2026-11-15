@@ -4,8 +4,9 @@ The policy drives all 18 actuators: the 14 duck servos and the 2 nacelle-tilt se
 targets as offsets from home) and the 2 ducted fans (thrust, 0..12 N each, through a first-order
 spool-up lag). One decision every 12 ms (3 physics steps of 4 ms).
 
-Commands: forward / sideways speed, turn rate, and a height for the trunk above the ground
-directly beneath it. At standing height that means walk; above it, fly; and the ground beneath
+Commands: forward / sideways speed, turn rate, a height for the trunk above the ground
+directly beneath it, and a lightness: the share of the weight the fans should carry (0 normally;
+0.5-0.85 for a moon run, long floating bounds; the Moon's gravity is 1/6 of Earth's). At standing height that means walk; above it, fly; and the ground beneath
 includes the top of an obstacle, so "walk on at standing height" past a box means getting onto it
 (or over it). Nothing says how: the fans cost energy, so walking wins where walking works.
 
@@ -15,6 +16,7 @@ Episodes (each is one of):
   * obstacle: a 0.4 m long box across the path, walk forward at standing height; its height
     rises per simulated duck as it gets past (curriculum, 3 cm -> 30 cm), falls when it falls;
   * airborne start: dropped in mid-air with the fans at hover, commanded to fly or to land.
+On the ground, segments are walk, fly or moon run (0.3-1 m/s, lightness 0.5-0.85).
 
 Observations: IMU (body rates, gravity direction), joint angles and velocities, last action, fan
 thrusts, command, gait clock, and two things a real duck would need extra sensors for: body
@@ -43,9 +45,9 @@ BOX_HALF = (0.2, 0.6, 0.2)          # obstacle half sizes, m (0.4 long, 1.2 wide
 REWARDS = dict(tracking_lin_vel=4.0, tracking_ang_vel=1.5, height=3.0, gait_phase=2.0, feet_air_time=0.5,
                symmetry=-5.0, lin_vel_z=-0.5, ang_vel_xy=-0.05, orientation=-5.0, hip_splay=-2.0,
                legs_home=-1.0, torques=-0.002, action_rate=-0.01, stand_still=-0.5, head_still=-5.0,
-               fan_power=-1.0, landing=-2.0, termination=-1.0)
+               fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, termination=-1.0)
 FAN_COST = (2.0, 0.3)               # fan_power multiplier when walking, when flying
-CMD_ACCEL, H_RATE = 0.5, 0.4        # command easing: m/s^2 and rad/s^2; m/s for the height
+CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)
 SEGMENT, EPISODE = 400, 1500        # control steps (4.8 s, 18 s)
@@ -105,17 +107,21 @@ class JetDuck(PipelineEnv):
 
     def sample_command(self, rng, obstacle):
         k = jax.random.split(rng, 6)
-        fly = jax.random.uniform(k[0]) < 0.5
+        u = jax.random.uniform(k[0])
         walk = jp.array([jax.random.uniform(k[1], minval=-0.1, maxval=0.3),
                          jax.random.uniform(k[2], minval=-0.1, maxval=0.1),
-                         jax.random.uniform(k[3], minval=-0.7, maxval=0.7), 0.0])
-        walk = jp.where(jax.random.uniform(k[4]) < 0.15, jp.zeros(4), walk)        # stand still
+                         jax.random.uniform(k[3], minval=-0.7, maxval=0.7), 0.0, 0.0])
+        walk = jp.where(jax.random.uniform(k[4]) < 0.15, jp.zeros(5), walk)        # stand still
         air = jp.array([jax.random.uniform(k[1], minval=-0.4, maxval=1.0),
                         jax.random.uniform(k[2], minval=-0.3, maxval=0.3),
                         jax.random.uniform(k[3], minval=-1.0, maxval=1.0),
-                        jax.random.uniform(k[5], minval=0.15, maxval=1.0)])
-        cmd = jp.where(fly, air, walk)
-        ahead = jp.array([jax.random.uniform(k[1], minval=0.15, maxval=0.3), 0.0, 0.0, 0.0])
+                        jax.random.uniform(k[5], minval=0.15, maxval=1.0), 0.0])
+        moon = jp.array([jax.random.uniform(k[1], minval=0.3, maxval=1.0),
+                         jax.random.uniform(k[2], minval=-0.1, maxval=0.1),
+                         jax.random.uniform(k[3], minval=-0.5, maxval=0.5), 0.0,
+                         jax.random.uniform(k[5], minval=0.5, maxval=0.85)])
+        cmd = jp.where(u < 0.4, walk, jp.where(u < 0.72, air, moon))
+        ahead = jp.array([jax.random.uniform(k[1], minval=0.15, maxval=0.3), 0.0, 0.0, 0.0, 0.0])
         return jp.where(obstacle, ahead, cmd)
 
     def gait_hz(self, cmd):
@@ -138,13 +144,13 @@ class JetDuck(PipelineEnv):
         cmd = jp.where(airborne & (jax.random.uniform(k6) < 0.5), cmd.at[3].set(0.0), cmd)
         thrust = jp.where(airborne, self._hover, 0.0) * jp.ones(2)
         info.update(box=box, obstacle=obstacle, airborne=airborne, passed=jp.zeros((), bool), command=cmd,
-                    cmd_now=jp.where(airborne, cmd, jp.zeros(4)),
+                    cmd_now=jp.where(airborne, cmd, jp.zeros(5)),
                     last_act=jp.zeros(self.action_size), last_target=self._default, thrust=thrust,
                     phase=jp.zeros(()), step=0, air_time=jp.zeros(2), single=jp.zeros(2),
                     last_single=jp.zeros(2), rewards={k: 0.0 for k in REWARDS})
         obs = self._obs(ps, info)
         metrics = {f"reward/{k}": 0.0 for k in REWARDS}
-        metrics.update(level=level, flying=jp.zeros(()), passed=jp.zeros(()))
+        metrics.update(level=level, flying=jp.zeros(()), moon=jp.zeros(()), passed=jp.zeros(()))
         return State(ps, obs, jp.zeros(()), jp.zeros(()), metrics, info)
 
     def _place_box(self, rng, obstacle, level):
@@ -180,8 +186,10 @@ class JetDuck(PipelineEnv):
         cmd = info0["cmd_now"]
         cmd = cmd.at[:3].set(cmd[:3] + jp.clip(info0["command"][:3] - cmd[:3], -dc, dc))
         cmd = cmd.at[3].set(cmd[3] + jp.clip(info0["command"][3] - cmd[3], -H_RATE * self.dt, H_RATE * self.dt))
+        cmd = cmd.at[4].set(cmd[4] + jp.clip(info0["command"][4] - cmd[4], -L_RATE * self.dt, L_RATE * self.dt))
         flying = cmd[3] > 0.05
-        walking = ~flying
+        moon = (cmd[4] > 0.2) & ~flying
+        walking = ~flying & ~moon
         moving = jp.linalg.norm(cmd[:3]) > 0.03
         phase = (info0["phase"] + self.gait_hz(cmd) * self.dt) % 1.0
 
@@ -207,9 +215,9 @@ class JetDuck(PipelineEnv):
         q = ps.q[7:]
         h_err = h - (self._h0 + cmd[3])
         r = dict(
-            tracking_lin_vel=jp.exp(-jp.sum(jp.square(cmd[:2] - local_v[:2])) / (0.01 + 0.04 * flying)),
+            tracking_lin_vel=jp.exp(-jp.sum(jp.square(cmd[:2] - local_v[:2])) / (0.01 + 0.04 * (flying | moon))),
             tracking_ang_vel=jp.exp(-jp.square(cmd[2] - local_w[2]) / 0.1),
-            height=jp.exp(-jp.square(h_err) / (0.002 + 0.01 * flying)),
+            height=jp.exp(-jp.square(h_err) / (0.002 + 0.01 * (flying | moon))),
             gait_phase=jp.mean((contact == stance).astype(jp.float32)) * walking,
             feet_air_time=jp.sum(jp.clip(air_time - 0.1, max=0.2) * first_contact) * moving * walking,
             symmetry=jp.abs(last_single[0] - last_single[1]) * moving * walking,
@@ -223,7 +231,9 @@ class JetDuck(PipelineEnv):
             action_rate=jp.sum(jp.square(action - info0["last_act"])),
             stand_still=jp.sum(jp.abs(q[self._legs] - self._default[self._legs])) * (1 - moving) * walking,
             head_still=jp.sum(jp.square(q[self._head] - self._default[self._head])),
-            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], FAN_COST[0]),
+            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], FAN_COST[0]) * ~moon,
+            lightness=jp.exp(-jp.square(jp.mean(thrust) / self._hover[0] - cmd[4]) / 0.01) * moon,
+            moon_air_time=jp.sum(jp.clip(air_time - 0.15, max=0.5) * first_contact) * moon,
             landing=jp.square(xd.vel[0, 2]) * jp.any(first_contact),
             termination=done * (info0["step"] < EPISODE - 10),
         )
@@ -257,11 +267,12 @@ class JetDuck(PipelineEnv):
         info["passed"] = jp.where(restart, False, passed)
         restart_cmd = jp.where(air & (jax.random.uniform(box_rng) < 0.5), new_cmd.at[3].set(0.0), new_cmd)
         info["command"] = jp.where(restart, restart_cmd, info["command"])
-        info["cmd_now"] = jp.where(restart, jp.where(air, restart_cmd, jp.zeros(4)), cmd)
+        info["cmd_now"] = jp.where(restart, jp.where(air, restart_cmd, jp.zeros(5)), cmd)
         info["thrust"] = jp.where(restart, jp.where(air, self._hover, 0.0) * jp.ones(2), info["thrust"])
         metrics = dict(state.metrics)
         metrics.update({f"reward/{k}": v for k, v in r.items()})
-        metrics.update(level=level, flying=flying.astype(jp.float32), passed=passed.astype(jp.float32))
+        metrics.update(level=level, flying=flying.astype(jp.float32), moon=moon.astype(jp.float32),
+                       passed=passed.astype(jp.float32))
         return state.replace(pipeline_state=ps, obs=self._obs(ps, info), reward=reward, done=done, metrics=metrics,
                              info=info)
 
@@ -285,7 +296,7 @@ class JetDuck(PipelineEnv):
             ps.qd[6:] * 0.05,                                      # joint velocities
             info["last_act"],
             info["thrust"],                                        # fan thrust (fraction of max)
-            info["cmd_now"] * jp.array([2.0, 2.0, 0.5, 2.0]),
+            info["cmd_now"] * jp.array([2.0, 2.0, 0.5, 2.0, 2.0]),
             jp.array([jp.cos(a), jp.sin(a)]),                      # gait clock
             math.rotate(ps.xd.vel[0], inv) * 0.5,                  # body velocity (estimator)
             jp.array([(p[2] - g - self._h0) * 2.0]),               # height above ground (rangefinder)
