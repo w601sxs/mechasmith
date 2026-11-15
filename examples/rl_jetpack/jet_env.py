@@ -45,8 +45,13 @@ BOX_HALF = (0.2, 0.6, 0.2)          # obstacle half sizes, m (0.4 long, 1.2 wide
 REWARDS = dict(tracking_lin_vel=4.0, tracking_ang_vel=1.5, height=3.0, gait_phase=2.0, feet_air_time=0.5,
                symmetry=-5.0, lin_vel_z=-0.5, ang_vel_xy=-0.05, orientation=-5.0, hip_splay=-2.0,
                legs_home=-1.0, torques=-0.002, action_rate=-0.01, stand_still=-0.5, head_still=-5.0,
-               fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, termination=-1.0)
-FAN_COST = (2.0, 0.3)               # fan_power multiplier when walking, when flying
+               fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, moon_rise=20.0,
+               obstacle_progress=3.0, obstacle_pass=300.0, termination=-1.0)
+FAN_COST = (6.0, 0.3)               # fan_power multiplier when walking, when flying
+# Run 3: runs 1-2 stalled at 3-6 cm boxes (waiting at a box cost little, a fall lowered it), idled
+# the fans at 10-30 % when walking (cost 2.0) and skimmed rather than bounded on the moon run.
+# Now: a bonus for getting past a box and for forward progress until then, a fall lowers the box
+# by half a step, walking fans cost 3x more, and moon strides are paid for the trunk's rise.
 CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)
@@ -214,6 +219,9 @@ class JetDuck(PipelineEnv):
         local_w = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         q = ps.q[7:]
         h_err = h - (self._h0 + cmd[3])
+        # obstacle: past the box (and still up)?
+        passed = info0["passed"] | (info0["obstacle"] & (x.pos[0, 0] > box[0] + BOX_HALF[0] + 0.1))
+        newly = passed & ~info0["passed"]
         r = dict(
             tracking_lin_vel=jp.exp(-jp.sum(jp.square(cmd[:2] - local_v[:2])) / (0.01 + 0.04 * (flying | moon))),
             tracking_ang_vel=jp.exp(-jp.square(cmd[2] - local_w[2]) / 0.1),
@@ -234,17 +242,18 @@ class JetDuck(PipelineEnv):
             fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], FAN_COST[0]) * ~moon,
             lightness=jp.exp(-jp.square(jp.mean(thrust) / self._hover[0] - cmd[4]) / 0.01) * moon,
             moon_air_time=jp.sum(jp.clip(air_time - 0.15, max=0.5) * first_contact) * moon,
+            moon_rise=jp.clip(h - self._h0, 0.0, 0.1) * ~jp.any(contact) * moon,
+            obstacle_progress=jp.clip(xd.vel[0, 0], 0.0, 0.4) * info0["obstacle"] * ~passed,
+            obstacle_pass=newly.astype(jp.float32),
             landing=jp.square(xd.vel[0, 2]) * jp.any(first_contact),
             termination=done * (info0["step"] < EPISODE - 10),
         )
         r = {k: v * REWARDS[k] for k, v in r.items()}
         reward = jp.clip(sum(r.values()) * self.dt, 0.0, 10000.0)
 
-        # obstacle curriculum: past the box (and still up) -> taller boxes for this duck
-        passed = info0["passed"] | (info0["obstacle"] & (x.pos[0, 0] > box[0] + BOX_HALF[0] + 0.1))
-        newly = passed & ~info0["passed"]
+        # obstacle curriculum: past the box -> taller boxes for this duck; a fall -> half a step lower
         level = jp.where(newly, info0["level"] + OBST_STEP, info0["level"])
-        level = jp.where(fallen & info0["obstacle"], info0["level"] - OBST_STEP, level)
+        level = jp.where(fallen & info0["obstacle"], info0["level"] - OBST_STEP / 2, level)
         level = jp.clip(level, OBST_START, OBST_TOP)
 
         step = info0["step"] + 1
