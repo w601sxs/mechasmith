@@ -102,3 +102,40 @@ gentler curriculum drop, 3x the walking fan cost; and a sign fix in the obstacle
   running at 0.8 m/s and 6.3 deg moon-running (90th percentiles 9, 15 and 13 deg). Walking still
   idles the fans at 12 % (28 % running).
 - The moon run, flight, hover and landing still work; it never fell on the puddle courses.
+
+## Run 6: hop on command (stopped at 1.25 B steps, 142 minutes on one H100)
+
+![run 6: walk, hop on command, moon run, take off, fly, hover, land, walk](media/run6_course.gif)
+
+Added a sixth command, **hop**: a 2 Hz two-footed bound, rewarded only when commanded (the
+alternating-gait terms are switched off while hopping and the hop terms otherwise), a penalty on
+two-footed landings when not hopping, a binding boost cap (after 0.4 s above 30 % thrust the fans
+are held below 29 % unless flying or moon-running) and a 2.2 Hz running cadence. The job was
+preempted at 1.25 B of 1.5 B steps; the curricula had been flat since ~0.8 B, so it was not rerun.
+Footfalls over 4 s (`build/rl_tools/gait.py`):
+
+| command | touchdowns | of which two-footed | one foot down | both | none | fans |
+|---|---|---|---|---|---|---|
+| walk 0.2 m/s | 13 | 0 | 86 % | 14 % | 0 % | 7 % |
+| run 0.8 m/s | 11 | 0 | 57 % | 0 % | 43 % | 30 % |
+| moon run 0.7 m/s | 12 | 0 | 45 % | 0 % | 55 % | 41 % |
+| hop 0.25 m/s | 22 | 22 | 5 % | 23 % | 73 % | 47 % |
+| hop + moon 0.7 m/s | 24 | 24 | 4 % | 12 % | 84 % | 48 % |
+
+- **Hop is now a skill on command**: every landing is two-footed when hopping and none is
+  otherwise; walking and running alternate feet again (run 4 hopped everywhere). Plain hopping
+  is fan-assisted, though (47 %, about the moon run's level), since nothing makes it pay for that.
+- Walking fans down to 7 % (12 % in run 4). The whole flat course (walk, hop, moon run, take off,
+  fly 2 m, hover, land, walk) runs without a fall.
+- **Puddles: lost.** With the boost cap binding, the run 4 glide is gone and no leap replaced
+  it: at 0.8 m/s its longest airborne stretch is 0.16 s (12 cm), and it steps into every puddle
+  from 25 to 80 cm. The puddle curriculum never left its 15 cm start.
+- **Boxes: a bug, found.** The episode ends when the trunk is less than 6 cm above "the ground
+  under it", and over a box that ground is the box top. So the moment the trunk's centre crosses
+  the near edge of a box taller than ~6 cm, with the feet still on the floor, the duck counts as
+  fallen (in the replay, at x = 0.6 m on a 10 cm box, standing upright). This is why the box
+  curriculum stalled at 6-11 cm in every run, and why it learned to stop at the edge.
+
+Next run: test falls against the ground under the feet, not under the trunk; give the puddle a
+leap-shaped reward (distance covered per airborne phase, or a puddle curriculum starting at a
+few cm) instead of leaving the run-up to discover it; and a fan cost on hopping.
