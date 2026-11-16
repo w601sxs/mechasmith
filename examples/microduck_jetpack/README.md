@@ -53,8 +53,13 @@ falls to ~1.4).
 
 Not modelled: fan spool-up lag (EDFs take ~0.1 s, which is why roll and height, the fast axes,
 are still fine with throttle but would want care on hardware), gyroscopic torque of the fans,
-aerodynamic drag and ground effect. The exhaust plumes in the GIF are drawn for fun (sized by
-each fan's thrust, along its axis).
+aerodynamic drag and ground effect. The exhaust plumes and smoke in the GIF are drawn for fun.
+The plumes are sized by each fan's thrust, along its axis. The smoke (`smoke.py`) is a small
+particle system: puffs leave each nozzle at a rate and speed set by the thrust, slow down, grow
+and fade. Puffs that reach the floor or a box top are thrown outward, so near the ground the
+jets kick up a ring of dust. They are composited onto each frame as soft blobs, hidden behind
+nearer geometry by the depth buffer. MuJoCo has no fluids, so this is a look, not a flow
+simulation, and it pushes on nothing.
 
 ## What it took in mechasmith
 

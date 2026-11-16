@@ -24,6 +24,8 @@ import mujoco
 import numpy as np
 from PIL import Image, ImageDraw
 
+from smoke import Smoke, nozzles, render as smoke_render
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "designs"))
 
@@ -129,6 +131,7 @@ def main():
     n = int(mission.duration / m.opt.timestep)
     spool = 0.0
     cam_look = d.subtree_com[1].copy()
+    smoke = Smoke()
     for k in range(n):
         t = d.time
         p_ref, v_ref, a_ref, yaw_ref, yawd_ref, label = mission.at(t)
@@ -178,8 +181,10 @@ def main():
             cam.lookat[:] = cam_look + np.array([0, 0, 0.01])
             cam.azimuth = 140 + 25 * np.sin(0.25 * t)
             renderer.update_scene(d, camera=cam, scene_option=opt)
-            add_plumes(renderer.scene, m, d, fan_sites, [d.ctrl[i] / hi[i] for i in rot])
-            img = Image.fromarray(renderer.render())
+            u = [d.ctrl[i] / hi[i] for i in rot]
+            smoke.step(steps_per_frame * m.opt.timestep, nozzles(d, fan_sites, u))
+            add_plumes(renderer.scene, m, d, fan_sites, u)
+            img = Image.fromarray(smoke_render(renderer, smoke))
             tilt = np.degrees(np.arccos(np.clip(R[2, 2], -1, 1)))
             draw = ImageDraw.Draw(img)
             draw.text((12, 10), f"Microduck jet pack   t = {t:4.1f} s   {label}", fill=(30, 30, 30))
@@ -191,7 +196,12 @@ def main():
         if k % 250 == 0 and DEBUG:
             print(f"{t:.2f} {label} thrust {thrust:.2f} ctrl {d.ctrl[free].round(3)} com {com.round(3)} e_R {e_R.round(3)}")
     renderer.close()
-    pal = frames[len(frames) // 2].quantize(colors=128, method=Image.Quantize.MEDIANCUT)
+    # one palette from frames across the flight, so the smoke's greys don't band
+    sample = frames[::max(1, len(frames) // 12)]
+    sheet = Image.new("RGB", (w_px, h_px * len(sample)))
+    for i, im in enumerate(sample):
+        sheet.paste(im, (0, i * h_px))
+    pal = sheet.quantize(colors=224, method=Image.Quantize.MEDIANCUT)
     frames = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     frames[0].save(out, save_all=True, append_images=frames[1:], duration=int(1000 / args.fps), loop=0,
                    optimize=True)

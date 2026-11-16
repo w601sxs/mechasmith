@@ -25,6 +25,10 @@ from PIL import Image, ImageDraw
 
 from jet_env import BOX_HALF, PUDDLE_HALF_W, JetDuck
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "microduck_jetpack"))
+from smoke import Smoke, nozzles, render as smoke_render  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 ap = argparse.ArgumentParser()
 ap.add_argument("policy")
@@ -138,6 +142,16 @@ fan_sites = [m.site(n).id for n in ("jet_left_fan", "jet_right_fan")]
 every = max(1, int(round(1 / (a.fps * env.dt))))
 look = frames_q[0][:3].copy()
 imgs = []
+smoke = Smoke()
+
+
+def ground(x, y):
+    if PUD is not None:
+        return np.zeros_like(x)
+    on = (np.abs(x - BOX_X) < BOX_HALF[0]) & (np.abs(y) < BOX_HALF[1])
+    return np.where(on, max(a.box, 0.0), 0.0)
+
+
 for k in range(0, len(frames_q), every):
     d.qpos[:] = frames_q[k]
     mujoco.mj_forward(m, d)
@@ -145,8 +159,9 @@ for k in range(0, len(frames_q), every):
     cam.lookat[:] = look
     cam.azimuth = 120 + 20 * np.sin(0.2 * k * env.dt)
     r.update_scene(d, camera=cam, scene_option=opt)
+    smoke.step(every * env.dt, nozzles(d, fan_sites, frames_t[k]), ground)
     add_plumes(r.scene, m, d, fan_sites, frames_t[k])
-    img = Image.fromarray(r.render())
+    img = Image.fromarray(smoke_render(r, smoke))
     ImageDraw.Draw(img).text((12, 10), f"t = {k * env.dt:4.1f} s   {frames_l[k]}   fans {100 * frames_t[k][0]:3.0f}% "
                                        f"{100 * frames_t[k][1]:3.0f}%", fill=(30, 30, 30))
     imgs.append(img)
@@ -156,7 +171,7 @@ sample = imgs[::max(1, len(imgs) // 12)]
 sheet = Image.new("RGB", (w, h * len(sample)))
 for i, im in enumerate(sample):
     sheet.paste(im, (0, i * h))
-pal = sheet.quantize(colors=160, method=Image.Quantize.MEDIANCUT)
+pal = sheet.quantize(colors=224, method=Image.Quantize.MEDIANCUT)
 imgs = [im.quantize(palette=pal, dither=Image.Dither.NONE) for im in imgs]
 imgs[0].save(a.out, save_all=True, append_images=imgs[1:], duration=int(1000 / a.fps), loop=0, optimize=True)
 print("wrote", a.out, len(imgs), "frames")
