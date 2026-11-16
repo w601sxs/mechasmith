@@ -65,7 +65,7 @@ SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
 state = reset(jax.random.PRNGKey(1))
 info = dict(state.info, obstacle=jp.array(PUD is None), puddle=jp.array(PUD is not None), airborne=jp.array(False),
             box=jp.array([BOX_X, a.box] if PUD is None else [50.0, 0.0]),
-            pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()),
+            pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()), td_age=jp.ones(2),
             passed=jp.array(False), cmd_now=jp.zeros(5), thrust=jp.zeros(2))
 state = state.replace(info=info)
 frames_q, frames_t, frames_l, log = [], [], [], []

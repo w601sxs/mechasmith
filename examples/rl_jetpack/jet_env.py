@@ -53,13 +53,19 @@ REWARDS = dict(tracking_lin_vel=4.0, tracking_ang_vel=1.5, height=3.0, gait_phas
                legs_home=-1.0, torques=-0.002, action_rate=-0.01, stand_still=-0.5, head_still=-5.0,
                fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, moon_rise=20.0,
                obstacle_progress=3.0, obstacle_pass=300.0, feet_flat=-15.0, boost_over=-30.0, jump_high=-100.0,
-               termination=-1.0)
+               single_support=2.0, run_phase=2.0, feet_together=-150.0, termination=-1.0)
 FAN_COST = (6.0, 0.3)               # fan_power multiplier when walking, when flying
 # Run 3: runs 1-2 stalled at 3-6 cm boxes (waiting at a box cost little, a fall lowered it), idled
 # the fans at 10-30 % when walking (cost 2.0) and skimmed rather than bounded on the moon run.
 # Now: a bonus for getting past a box and for forward progress until then, a fall lowers the box
 # by half a step, walking fans cost 3x more, and moon strides are paid for the trunk's rise.
 # Run 4 adds: flat feet on the ground (runs 1-2 ran on tip-toe), and the long jump over a puddle.
+# Run 5: run 4 hopped, both feet together, at every speed: "equal steps" scored a hop perfectly (no
+# single-foot steps at all), air time paid both feet at a two-footed landing, and the run-up and
+# moon run had no gait terms. Now: reward time on one foot, penalise both feet landing within
+# 50 ms, a running gait clock (left, flight, right, flight) for the run-up and the moon run, air
+# time only for single-foot landings, and the boost cap is binding: past 0.4 s the fans are cut
+# to 30 % until a foot is down again (in the long jump and on the ground, not in flight or moon).
 CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)
@@ -141,8 +147,8 @@ class JetDuck(PipelineEnv):
         run = jp.array([jax.random.uniform(k[1], minval=0.5, maxval=0.9), 0.0, 0.0, 0.0, 0.0])
         return jp.where(puddle, run, jp.where(obstacle, ahead, cmd))
 
-    def gait_hz(self, cmd):
-        return 1.8 + 3.0 * jp.abs(cmd[0])
+    def gait_hz(self, cmd, running=False):
+        return jp.where(running, 2.2, 1.8 + 3.0 * jp.abs(cmd[0]))
 
     # ---- episode
     def reset(self, rng):
@@ -162,7 +168,7 @@ class JetDuck(PipelineEnv):
         # an airborne start is told to fly or to land (walk)
         cmd = jp.where(airborne & (jax.random.uniform(k6) < 0.5), cmd.at[3].set(0.0), cmd)
         thrust = jp.where(airborne, self._hover, 0.0) * jp.ones(2)
-        info.update(box=box, obstacle=obstacle, pud=pud, puddle=puddle, boost=jp.zeros(()),
+        info.update(box=box, obstacle=obstacle, pud=pud, puddle=puddle, boost=jp.zeros(()), td_age=jp.ones(2),
                     airborne=airborne, passed=jp.zeros((), bool), command=cmd,
                     cmd_now=jp.where(airborne, cmd, jp.zeros(5)),
                     last_act=jp.zeros(self.action_size), last_target=self._default, thrust=thrust,
@@ -204,6 +210,9 @@ class JetDuck(PipelineEnv):
 
         # fans: commanded fraction through the spool-up lag; servos: rate-limited targets
         want_t = jp.clip(action[:2], 0.0, 1.0)
+        # binding boost cap (not when flying or moon-running): past BOOST_MAX in the air, at most 30 %
+        free_fans = (info0["cmd_now"][3] > 0.05) | (info0["cmd_now"][4] > 0.2)
+        want_t = jp.where((info0["boost"] > BOOST_MAX) & ~free_fans, jp.minimum(want_t, BOOST_FRAC - 0.01), want_t)
         thrust = info0["thrust"] + (want_t - info0["thrust"]) * (self.dt / (SPOOL_TAU + self.dt))
         want = jp.clip(self._default[self._jq] + action[2:] * self._action_scale, self._lo, self._hi)
         dmax = SERVO_SPEED * self.dt
@@ -222,10 +231,15 @@ class JetDuck(PipelineEnv):
         moon = (cmd[4] > 0.2) & ~flying
         walking = ~flying & ~moon
         moving = jp.linalg.norm(cmd[:3]) > 0.03
-        phase = (info0["phase"] + self.gait_hz(cmd) * self.dt) % 1.0
+        running = moon | (info0["puddle"] & ~flying)
+        phase = (info0["phase"] + self.gait_hz(cmd, running) * self.dt) % 1.0
 
         contact = self.foot_contact(ps)
         first_contact = (info0["air_time"] > 0.1) & contact
+        # both feet landing within 50 ms of each other (a two-footed hop)
+        td_age = jp.where(first_contact, 0.0, info0["td_age"] + self.dt)
+        together = jp.any(first_contact & (td_age[::-1] < 0.05))
+        step_down = first_contact & ~together           # a real single-foot landing
         alone = contact & ~contact[::-1]
         single = jp.where(alone, info0["single"] + self.dt, 0.0)
         ended = ~alone & (info0["single"] > 0)
@@ -241,13 +255,15 @@ class JetDuck(PipelineEnv):
         fallen = (h < 0.06) | (up[2] < 0.5) | (x.pos[0, 2] > 3.0) | splash
         done = fallen.astype(jp.float32)
         boosting = jp.mean(thrust) > BOOST_FRAC
-        boost = jp.where(jp.all(contact), 0.0, info0["boost"] + boosting * self.dt)
+        boost = jp.where(jp.any(contact), 0.0, info0["boost"] + boosting * self.dt)
         sole_up = ps.geom_xmat[self._soles][:, :, 2]          # each sole's normal (world)
         jumping = puddle & ~flying & ~moon
 
         s = jp.sin(2 * jp.pi * phase)
         stance = jp.stack([s >= -0.25, s <= 0.25])
         stance = jp.where(moving, stance, jp.ones(2, dtype=bool))
+        # running: left foot down for the first 30 % of the cycle, right for 50-80 %, flight between
+        run_stance = jp.stack([phase < 0.3, (phase >= 0.5) & (phase < 0.8)])
         local_v = math.rotate(xd.vel[0], math.quat_inv(x.rot[0]))
         local_w = math.rotate(xd.ang[0], math.quat_inv(x.rot[0]))
         q = ps.q[7:]
@@ -263,7 +279,10 @@ class JetDuck(PipelineEnv):
             tracking_ang_vel=jp.exp(-jp.square(cmd[2] - local_w[2]) / 0.1),
             height=jp.exp(-jp.square(h_err) / (0.002 + 0.01 * (flying | moon | jumping))),
             gait_phase=jp.mean((contact == stance).astype(jp.float32)) * walking,
-            feet_air_time=jp.sum(jp.clip(air_time - 0.1, max=0.2) * first_contact) * moving * walking,
+            feet_air_time=jp.sum(jp.clip(air_time - 0.1, max=0.2) * step_down) * moving * walking,
+            single_support=(jp.sum(contact) == 1) * moving * ~flying,
+            run_phase=jp.mean((contact == run_stance).astype(jp.float32)) * running,
+            feet_together=together * moving * ~flying,
             symmetry=jp.abs(last_single[0] - last_single[1]) * moving * walking,
             lin_vel_z=jp.square(xd.vel[0, 2]) * walking,
             ang_vel_xy=jp.sum(jp.square(xd.ang[0, :2])),
@@ -280,7 +299,7 @@ class JetDuck(PipelineEnv):
             boost_over=jp.clip(boost - BOOST_MAX, 0.0, 1.0) * ~flying * ~moon,
             jump_high=jp.clip(h - self._h0 - 0.10, 0.0, 0.5) * jumping,
             lightness=jp.exp(-jp.square(jp.mean(thrust) / self._hover[0] - cmd[4]) / 0.01) * moon,
-            moon_air_time=jp.sum(jp.clip(air_time - 0.15, max=0.5) * first_contact) * moon,
+            moon_air_time=jp.sum(jp.clip(air_time - 0.15, max=0.5) * step_down) * moon,
             moon_rise=jp.clip(h - self._h0, 0.0, 0.1) * ~jp.any(contact) * moon,
             obstacle_progress=jp.clip(xd.vel[0, 0], 0.0, 0.4) * (info0["obstacle"] | puddle) * ~passed,
             obstacle_pass=newly.astype(jp.float32),
@@ -305,7 +324,7 @@ class JetDuck(PipelineEnv):
                     last_target=jp.where(fallen, self._default, self._default.at[self._jq].set(target)),
                     phase=jp.where(fallen, 0.0, phase), single=jp.where(fallen, 0.0, single),
                     last_single=jp.where(fallen, 0.0, last_single), level=level, plevel=plevel, passed=passed,
-                    boost=jp.where(fallen, 0.0, boost), rewards=r)
+                    boost=jp.where(fallen, 0.0, boost), td_age=td_age, rewards=r)
         new_cmd = self.sample_command(cmd_rng, info0["obstacle"], puddle)
         info["command"] = jp.where(seg_end, new_cmd, info0["command"])
         info["cmd_now"] = cmd
