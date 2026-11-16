@@ -55,8 +55,8 @@ REWARDS = dict(tracking_lin_vel=4.0, tracking_ang_vel=1.5, height=3.0, gait_phas
                fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, moon_rise=20.0,
                obstacle_progress=3.0, obstacle_pass=300.0, feet_flat=-15.0, boost_over=-30.0, jump_high=-100.0,
                single_support=2.0, run_phase=2.0, feet_together=-150.0, hop_phase=2.0, hop_together=150.0,
-               hop_air_time=1.0, termination=-1.0)
-FAN_COST = (6.0, 0.3)               # fan_power multiplier when walking, when flying
+               hop_air_time=1.0, leap=300.0, termination=-1.0)
+FAN_COST = (6.0, 0.3, 15.0)         # fan_power multiplier when walking, when flying, when hopping
 # Run 3: runs 1-2 stalled at 3-6 cm boxes (waiting at a box cost little, a fall lowered it), idled
 # the fans at 10-30 % when walking (cost 2.0) and skimmed rather than bounded on the moon run.
 # Now: a bonus for getting past a box and for forward progress until then, a fall lowers the box
@@ -71,12 +71,18 @@ FAN_COST = (6.0, 0.3)               # fan_power multiplier when walking, when fl
 # Run 6: hopping is a skill on command. A sixth command, hop (0/1): with it, both feet land and
 # take off together in time with a hop clock (and the alternating-feet terms are off); without
 # it, the run-5 terms make it walk and run on alternating feet. A quarter of ground commands hop.
+# Run 7: run 6 stopped at every box taller than ~6 cm because the fall test measured the trunk's
+# height above the ground under the trunk: once the trunk crossed a box's near edge with the feet
+# still on the floor it counted as fallen. Falls are now measured from the lowest ground under the
+# trunk or either sole. Run 6 also stepped into every puddle (longest flight 12 cm): now each
+# landing in a puddle episode is paid for the distance flown beyond 15 cm, the puddle curriculum
+# starts at 5 cm, and hopping pays 2.5x the walking fan cost (it hopped on 47 % fans).
 CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)
 SEGMENT, EPISODE = 400, 1500        # control steps (4.8 s, 18 s)
 OBST_START, OBST_STEP, OBST_TOP = 0.03, 0.02, 0.30
-PUD_START, PUD_STEP, PUD_TOP = 0.15, 0.05, 1.0     # puddle length curriculum, m
+PUD_START, PUD_STEP, PUD_TOP = 0.05, 0.05, 1.0     # puddle length curriculum, m
 BOOST_FRAC, BOOST_MAX = 0.3, 0.4    # a "boost" is mean fan thrust above 30 %; allowed 0.4 s per leap
 P_BOX, P_PUDDLE, P_AIR = 0.2, 0.15, 0.2
 
@@ -175,7 +181,7 @@ class JetDuck(PipelineEnv):
         cmd = jp.where(airborne & (jax.random.uniform(k6) < 0.5), cmd.at[3].set(0.0), cmd)
         thrust = jp.where(airborne, self._hover, 0.0) * jp.ones(2)
         info.update(box=box, obstacle=obstacle, pud=pud, puddle=puddle, boost=jp.zeros(()), td_age=jp.ones(2),
-                    airborne=airborne, passed=jp.zeros((), bool), command=cmd,
+                    airborne=airborne, passed=jp.zeros((), bool), command=cmd, toff_x=jp.zeros(()),
                     cmd_now=jp.where(airborne, cmd, jp.zeros(6)),
                     last_act=jp.zeros(self.action_size), last_target=self._default, thrust=thrust,
                     phase=jp.zeros(()), step=0, air_time=jp.zeros(2), single=jp.zeros(2),
@@ -260,7 +266,10 @@ class JetDuck(PipelineEnv):
         pud, puddle = info0["pud"], info0["puddle"]
         sole_xy = ps.geom_xpos[self._soles, :2]
         splash = jp.any(contact & self.in_puddle(sole_xy, pud))
-        fallen = (h < 0.06) | (up[2] < 0.5) | (x.pos[0, 2] > 3.0) | splash
+        # fall test from the lowest ground under the trunk or a sole (not the box top when the
+        # trunk is over the box's edge and the feet are still on the floor)
+        g_low = jp.minimum(g, jp.minimum(self.ground(sole_xy[0], box), self.ground(sole_xy[1], box)))
+        fallen = ((x.pos[0, 2] - g_low) < 0.06) | (up[2] < 0.5) | (x.pos[0, 2] > 3.0) | splash
         done = fallen.astype(jp.float32)
         boosting = jp.mean(thrust) > BOOST_FRAC
         boost = jp.where(jp.any(contact), 0.0, info0["boost"] + boosting * self.dt)
@@ -282,6 +291,10 @@ class JetDuck(PipelineEnv):
         passed = info0["passed"] | past_box | past_pud
         newly = passed & ~info0["passed"] & ~fallen
         walking = walking & ~jumping          # the walking gait terms don't apply to the run-up
+        # long jump: at each landing in a puddle episode, the distance flown beyond 15 cm
+        landed = jp.any(contact) & (info0["air_time"].min() > 0.1)
+        leap = jp.clip(x.pos[0, 0] - info0["toff_x"] - 0.15, 0.0, 1.2) * landed * jumping * ~info0["passed"] * ~splash
+        toff_x = jp.where(jp.any(contact), x.pos[0, 0], info0["toff_x"])
         r = dict(
             tracking_lin_vel=jp.exp(-jp.sum(jp.square(cmd[:2] - local_v[:2])) / (0.01 + 0.04 * (flying | moon | jumping))),
             tracking_ang_vel=jp.exp(-jp.square(cmd[2] - local_w[2]) / 0.1),
@@ -306,7 +319,7 @@ class JetDuck(PipelineEnv):
             action_rate=jp.sum(jp.square(action - info0["last_act"])),
             stand_still=jp.sum(jp.abs(q[self._legs] - self._default[self._legs])) * (1 - moving) * walking,
             head_still=jp.sum(jp.square(q[self._head] - self._default[self._head])),
-            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], FAN_COST[0]) * ~moon,
+            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], jp.where(hop, FAN_COST[2], FAN_COST[0])) * ~moon,
             feet_flat=jp.sum(jp.sum(jp.square(sole_up[:, :2]), axis=1) * contact) * ~flying,
             boost_over=jp.clip(boost - BOOST_MAX, 0.0, 1.0) * ~flying * ~moon,
             jump_high=jp.clip(h - self._h0 - 0.10, 0.0, 0.5) * jumping,
@@ -316,6 +329,7 @@ class JetDuck(PipelineEnv):
             obstacle_progress=jp.clip(xd.vel[0, 0], 0.0, 0.4) * (info0["obstacle"] | puddle) * ~passed,
             obstacle_pass=newly.astype(jp.float32),
             landing=jp.square(xd.vel[0, 2]) * jp.any(first_contact),
+            leap=leap,
             termination=done * (info0["step"] < EPISODE - 10),
         )
         r = {k: v * REWARDS[k] for k, v in r.items()}
@@ -336,7 +350,7 @@ class JetDuck(PipelineEnv):
                     last_target=jp.where(fallen, self._default, self._default.at[self._jq].set(target)),
                     phase=jp.where(fallen, 0.0, phase), single=jp.where(fallen, 0.0, single),
                     last_single=jp.where(fallen, 0.0, last_single), level=level, plevel=plevel, passed=passed,
-                    boost=jp.where(fallen, 0.0, boost), td_age=td_age, rewards=r)
+                    boost=jp.where(fallen, 0.0, boost), td_age=td_age, toff_x=toff_x, rewards=r)
         new_cmd = self.sample_command(cmd_rng, info0["obstacle"], puddle)
         info["command"] = jp.where(seg_end, new_cmd, info0["command"])
         info["cmd_now"] = cmd
