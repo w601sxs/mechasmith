@@ -29,6 +29,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--steps", type=int, default=150_000_000)
 ap.add_argument("--envs", type=int, default=8192)
 ap.add_argument("--smoke", action="store_true")
+ap.add_argument("--s3", default=None, help="s3://bucket/prefix for resumable checkpoints (one per evaluation)")
 a = ap.parse_args()
 if a.smoke:
     a.steps, a.envs = 20_000, 32
@@ -37,6 +38,30 @@ print("devices", jax.devices(), flush=True)
 report("start", {"devices": str(jax.devices()), "steps": a.steps, "envs": a.envs})
 env = JetDuck()
 t0 = time.time()
+
+# Resume: Scale Train restarts a preempted job from the top with the same command, so each
+# evaluation writes (normaliser, policy, value) and the step count to S3, and a restart picks
+# up from the last one (the optimiser state and the per-duck curricula start over).
+CKPT, DONE, RESTORE = None, 0, None
+if a.s3:
+    try:
+        import boto3
+        bucket, prefix = a.s3[5:].split("/", 1)
+        s3 = boto3.client("s3")
+        CKPT = (bucket, prefix.rstrip("/") + "/ckpt.pkl")
+        try:
+            s3.download_file(*CKPT, "/tmp/ckpt.pkl")
+            with open("/tmp/ckpt.pkl", "rb") as f:
+                ck = pickle.load(f)
+            DONE, RESTORE = int(ck["step"]), ck["params"]
+            report("resume", {"from_step": DONE, "uri": a.s3})
+        except Exception as ex:   # no checkpoint yet: a fresh start
+            report("fresh", {"uri": a.s3, "note": str(ex)[:200]})
+        s3.put_object(Bucket=bucket, Key=prefix.rstrip("/") + "/_probe.txt", Body=b"ok")
+    except Exception as ex:
+        report("s3_failed", {"error": str(ex)[:300]})
+        CKPT = None
+REMAINING = max(a.steps - DONE, 0)
 
 
 TRAIN = {}   # curriculum numbers from the training metrics (obstacle level, share flying, boxes passed)
@@ -52,7 +77,7 @@ def progress(step, metrics):
     m = {k: float(v) for k, v in metrics.items() if k.startswith("eval/") and np.ndim(v) == 0}
     m = {k: round(v, 4) for k, v in m.items() if "std" not in k}
     m.update({f"train/{k}": v for k, v in TRAIN.items()})
-    m["step"], m["minutes"] = int(step), round((time.time() - t0) / 60, 2)
+    m["step"], m["minutes"] = int(step) + DONE, round((time.time() - t0) / 60, 2)
     print(json.dumps(m), flush=True)
     report("progress", m)
 
@@ -70,17 +95,26 @@ def send_policy(kind, params, **extra):
 
 
 def snapshot(step, make_policy, params):   # a policy at every evaluation, for mid-run GIFs
-    send_policy("snapshot_chunk", params, step=int(step))
-    print(json.dumps({"snapshot": int(step)}), flush=True)
+    step = int(step) + DONE
+    send_policy("snapshot_chunk", params, step=step)
+    print(json.dumps({"snapshot": step}), flush=True)
+    if CKPT and int(step) > DONE:
+        try:
+            with open("/tmp/ckpt_new.pkl", "wb") as f:
+                pickle.dump({"step": step, "params": jax.tree.map(np.asarray, jax.device_get(params))}, f)
+            s3.upload_file("/tmp/ckpt_new.pkl", *CKPT)
+            report("ckpt", {"step": step})
+        except Exception as ex:
+            report("ckpt_failed", {"error": str(ex)[:300]})
 
 
 make_networks = functools.partial(ppo_networks.make_ppo_networks, policy_hidden_layer_sizes=(256, 256, 128, 128))
 make_policy, params, _ = ppo.train(
-    environment=env, num_timesteps=a.steps, num_evals=4 if a.smoke else 25, episode_length=EPISODE,
+    environment=env, num_timesteps=REMAINING, num_evals=4 if a.smoke else max(2, round(25 * REMAINING / a.steps)), episode_length=EPISODE,
     normalize_observations=True, action_repeat=1, unroll_length=20, num_minibatches=4 if a.smoke else 32,
     num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=a.envs,
     batch_size=16 if a.smoke else 256, max_grad_norm=1.0, network_factory=make_networks, seed=0,
-    progress_fn=progress, policy_params_fn=snapshot, log_training_metrics=True, training_metrics_steps=5_000_000, num_eval_envs=8 if a.smoke else 128)
+    progress_fn=progress, policy_params_fn=snapshot, restore_params=RESTORE, restore_value_fn=RESTORE is not None, log_training_metrics=True, training_metrics_steps=5_000_000, num_eval_envs=8 if a.smoke else 128)
 
 with open("policy.pkl", "wb") as f:
     pickle.dump(jax.device_get(params), f)
