@@ -98,5 +98,7 @@ gentler curriculum drop, 3x the walking fan cost; and a sign fix in the obstacle
 - **Boxes: still stops at the edge**, now even at 10 cm in the replay (training reached boxes
   of 6-11 cm, up from 3-6 cm). On the 15 cm course it waits, then flies over on command and
   lands, as run 1 did.
-- **Flat feet**: the sole-tilt penalty is paid throughout (it did not go to zero); see the GIF.
+- **Flat feet, mostly**: soles on the ground tilt 2.9 deg (median) walking at 0.2 m/s, 7.5 deg
+  running at 0.8 m/s and 6.3 deg moon-running (90th percentiles 9, 15 and 13 deg). Walking still
+  idles the fans at 12 % (28 % running).
 - The moon run, flight, hover and landing still work; it never fell on the puddle courses.
