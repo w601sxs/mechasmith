@@ -3,7 +3,7 @@
 usage: python play.py <policy.b64 | policy.pkl> [--out course.gif] [--box 0.15 | --puddle 0.5]
 
 Course: stand, walk forward to a box (--box m tall, 0.4 m long) and on past it at standing height
-(the policy decides how: step, hop or fly), a moon run (fans carry 80 % of the weight), then a flight (climb to 0.6 m, fly forward, hover),
+(the policy decides how: step, hop or fly), a moon run (fans carry 80 % of the weight), hopping on command, then a flight (climb to 0.6 m, fly forward, hover),
 land, and walk on. The policy runs in the training environment (CPU, MJX); the motion is replayed
 on the full mechasmith model with the box added, exhaust plumes sized by each fan's thrust.
 With --puddle L the course is a long jump instead: run up and over an L m puddle, then the moon
@@ -51,22 +51,23 @@ step, reset = jax.jit(env.step), jax.jit(env.reset)
 
 BOX_X, PUD_NEAR = 0.8, 1.2
 PUD = None if a.puddle is None else (PUD_NEAR + a.puddle / 2, a.puddle / 2)
-# (command [vx, vy, yaw rate, height above standing, lightness], seconds, label)
-SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
-          ((0.25, 0.0, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead") if PUD is None else
-          ((0.8, 0.0, 0.0, 0.0, 0.0), 5.0, f"run and jump: a {100 * a.puddle:.0f} cm puddle"),
-          ((0.7, 0.0, 0.0, 0.0, 0.8), 5.0, "moon run (fans carry 80%)"),
-          ((0.0, 0.0, 0.0, 0.5, 0.0), 3.0, "take off"),
-          ((0.6, 0.0, 0.0, 0.5, 0.0), 4.0, "fly forward"),
-          ((0.0, 0.0, 0.0, 0.5, 0.0), 2.0, "hover"),
-          ((0.0, 0.0, 0.0, 0.0, 0.0), 3.0, "land"),
-          ((0.2, 0.0, 0.0, 0.0, 0.0), 4.0, "walk")]
+# (command [vx, vy, yaw rate, height above standing, lightness, hop], seconds, label)
+SCRIPT = [((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 1.0, "stand"),
+          ((0.25, 0.0, 0.0, 0.0, 0.0, 0.0), 9.0, f"walk on: a {100 * a.box:.0f} cm box ahead") if PUD is None else
+          ((0.8, 0.0, 0.0, 0.0, 0.0, 0.0), 5.0, f"run and jump: a {100 * a.puddle:.0f} cm puddle"),
+          ((0.25, 0.0, 0.0, 0.0, 0.0, 1.0), 4.0, "hop (on command)"),
+          ((0.7, 0.0, 0.0, 0.0, 0.8, 0.0), 5.0, "moon run (fans carry 80%)"),
+          ((0.0, 0.0, 0.0, 0.5, 0.0, 0.0), 3.0, "take off"),
+          ((0.6, 0.0, 0.0, 0.5, 0.0, 0.0), 4.0, "fly forward"),
+          ((0.0, 0.0, 0.0, 0.5, 0.0, 0.0), 2.0, "hover"),
+          ((0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 3.0, "land"),
+          ((0.2, 0.0, 0.0, 0.0, 0.0, 0.0), 4.0, "walk")]
 
 state = reset(jax.random.PRNGKey(1))
 info = dict(state.info, obstacle=jp.array(PUD is None), puddle=jp.array(PUD is not None), airborne=jp.array(False),
             box=jp.array([BOX_X, a.box] if PUD is None else [50.0, 0.0]),
             pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()), td_age=jp.ones(2),
-            passed=jp.array(False), cmd_now=jp.zeros(5), thrust=jp.zeros(2))
+            passed=jp.array(False), cmd_now=jp.zeros(6), thrust=jp.zeros(2))
 state = state.replace(info=info)
 frames_q, frames_t, frames_l, log = [], [], [], []
 fell = False
