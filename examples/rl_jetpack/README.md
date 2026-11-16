@@ -23,7 +23,9 @@ fans cost energy.
    ```
 3. Train on one GPU: `bash run_job.sh 600000000 8192` (same job script as `rl_microduck`).
 4. Watch it: `python play.py policy.b64 --box 0.15 --out course.gif` (add `--with pillow`): walk to
-   a box and past it, take off, fly forward, hover, land, walk.
+   a box and past it, take off, fly forward, hover, land, walk. Add `--record course.npz` to
+   render the course in Blender with Mantaflow smoke (`examples/microduck_jetpack/blender/`;
+   use `render.py --adaptive --res 800` for a course this long).
 
 ## The task (`jet_env.py`)
 

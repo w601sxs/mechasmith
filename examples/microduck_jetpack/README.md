@@ -75,8 +75,11 @@ blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_flig
 nozzle's exit, thrust axis and throttle. `render.py` loads them as they are, keyframes them, and
 makes each nozzle exit a smoke inflow disc whose exhaust speed (9 m/s x throttle, drawn rather
 than real) and normal follow the fan. The floor is the domain's bottom wall, so the jets spread
-along it. The 16.7 s flight at grid 160 bakes in about 3.5 minutes and renders 500 frames
-(800x600, EEVEE) in about 10 minutes on an M5 Pro.
+along it. Smoke dissolves exponentially (`--dissolve`, 30 frames) so thick jets last and
+haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 500 frames
+(800x600, EEVEE) in about 10 minutes on an M5 Pro. For a long RL course (`rl_jetpack/play.py
+--record`), `--adaptive` simulates only where the smoke is: the 35 s, 10 m run 6 course at grid
+800 (1.4 cm cells) bakes in about 7 minutes.
 
 ## What it took in mechasmith
 

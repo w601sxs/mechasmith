@@ -37,6 +37,8 @@ ap.add_argument("--box", type=float, default=0.15)
 ap.add_argument("--puddle", type=float, default=None, help="long-jump course over a puddle this long (m)")
 ap.add_argument("--scene", default=str(ROOT / "build/microduck_jetpack/scene.xml"))
 ap.add_argument("--fps", type=int, default=15)
+ap.add_argument("--record", default=None,
+                help="also save qpos and fan throttles at 30 fps (.npz, for microduck_jetpack/blender/export.py)")
 a = ap.parse_args()
 
 raw = Path(a.policy).read_bytes()
@@ -96,6 +98,10 @@ for cmd, secs, label in SCRIPT:
     print(json.dumps(log[-1]))
     if fell:
         break
+if a.record:
+    idx = np.round(np.arange(0, len(frames_q) * env.dt, 1 / 30) / env.dt).astype(int).clip(0, len(frames_q) - 1)
+    np.savez(a.record, qpos=np.array(frames_q)[idx], throttle=np.array(frames_t)[idx], fps=30, scene=a.scene)
+    print("recorded", a.record, len(idx), "frames")
 far = BOX_X + BOX_HALF[0] if PUD is None else PUD[0] + PUD[1]
 past = max(q[0] for q in frames_q) > far
 print(json.dumps({"obstacle": f"box {a.box} m" if PUD is None else f"puddle {a.puddle} m", "got_past": bool(past),

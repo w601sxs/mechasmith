@@ -32,6 +32,9 @@ ap.add_argument("--frames", type=int, nargs=2, default=None)
 ap.add_argument("--size", type=int, nargs=2, default=(960, 720))
 ap.add_argument("--samples", type=int, default=64)
 ap.add_argument("--vmax", type=float, default=9.0, help="exhaust speed at full throttle, m/s (drawn, not real)")
+ap.add_argument("--dissolve", type=int, default=30, help="frames for smoke to dissolve (lower = less haze)")
+ap.add_argument("--adaptive", action="store_true",
+                help="adaptive domain: only simulate where the smoke is (for long courses; set --res high)")
 ap.add_argument("--skip-bake", action="store_true")
 a = ap.parse_args(argv)
 a.out = a.out.resolve()
@@ -184,12 +187,17 @@ ds.use_collision_border_bottom = True                       # ... but the floor 
 ds.alpha, ds.beta = 0.0, 0.4             # no density buoyancy; warm exhaust rises once it slows
 ds.vorticity = 0.15
 ds.use_dissolve_smoke = True
-ds.dissolve_speed = 70
-ds.use_dissolve_smoke_log = True
+ds.dissolve_speed = a.dissolve
+ds.use_dissolve_smoke_log = True       # exponential: thick jets last, thin haze goes
 ds.use_adaptive_timesteps = True
 ds.timesteps_max = 12
 ds.cfl_condition = 3.0
 ds.cache_type = "ALL"
+if a.adaptive:
+    ds.use_adaptive_domain = True
+    ds.additional_res = 0
+    ds.adapt_margin = 6
+    ds.adapt_threshold = 0.005
 ds.cache_directory = str(a.out / "cache")
 ds.cache_frame_start, ds.cache_frame_end = f0, f1
 if a.noise:
@@ -202,7 +210,7 @@ vn = vm.node_tree.nodes
 vn.remove(vn["Principled BSDF"])
 pv = vn.new("ShaderNodeVolumePrincipled")
 pv.inputs["Color"].default_value = (0.92, 0.92, 0.94, 1)
-pv.inputs["Density"].default_value = 60.0
+pv.inputs["Density"].default_value = 90.0
 pv.inputs["Anisotropy"].default_value = 0.2
 vm.node_tree.links.new(pv.outputs["Volume"], vn["Material Output"].inputs["Volume"])
 dom.data.materials.append(vm)
