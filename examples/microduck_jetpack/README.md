@@ -61,6 +61,23 @@ jets kick up a ring of dust. They are composited onto each frame as soft blobs, 
 nearer geometry by the depth buffer. MuJoCo has no fluids, so this is a look, not a flow
 simulation, and it pushes on nothing.
 
+## A fluid-smoke render (Blender + Mantaflow)
+
+For a showcase video, the same flight can be rendered in Blender with real smoke from Mantaflow:
+
+```bash
+uv run python examples/microduck_jetpack/fly.py --fps 30 --record build/microduck_jetpack/flight30.npz
+uv run python examples/microduck_jetpack/blender/export.py build/microduck_jetpack/flight30.npz build/blender_flight
+blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_flight build/blender_full --res 160
+```
+
+`export.py` writes the visual geoms (meshes as .obj), each geom's pose per frame and each
+nozzle's exit, thrust axis and throttle. `render.py` loads them as they are, keyframes them, and
+makes each nozzle exit a smoke inflow disc whose exhaust speed (9 m/s x throttle, drawn rather
+than real) and normal follow the fan. The floor is the domain's bottom wall, so the jets spread
+along it. The 16.7 s flight at grid 160 bakes in about 3.5 minutes and renders 500 frames
+(800x600, EEVEE) in about 10 minutes on an M5 Pro.
+
 ## What it took in mechasmith
 
 - **Thrust vectoring in the library.** `mjcf.hover_trim` now solves for the rotor thrusts *and*

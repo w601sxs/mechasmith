@@ -89,6 +89,8 @@ def main():
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--fps", type=int, default=15)
     ap.add_argument("--size", type=int, nargs=2, default=(480, 360))
+    ap.add_argument("--record", type=Path, default=None,
+                    help="also save each frame's qpos and fan throttles (.npz, for blender/export.py)")
     args = ap.parse_args()
     out = args.out or args.build / "flight.gif"
 
@@ -127,6 +129,7 @@ def main():
     fan_sites = [m.actuator_trnid[i, 0] for i in rot]
 
     frames, log = [], []
+    rec_q, rec_u = [], []
     steps_per_frame = int(round(1.0 / (args.fps * m.opt.timestep)))
     n = int(mission.duration / m.opt.timestep)
     spool = 0.0
@@ -182,6 +185,8 @@ def main():
             cam.azimuth = 140 + 25 * np.sin(0.25 * t)
             renderer.update_scene(d, camera=cam, scene_option=opt)
             u = [d.ctrl[i] / hi[i] for i in rot]
+            rec_q.append(d.qpos.copy())
+            rec_u.append(u)
             smoke.step(steps_per_frame * m.opt.timestep, nozzles(d, fan_sites, u))
             add_plumes(renderer.scene, m, d, fan_sites, u)
             img = Image.fromarray(smoke_render(renderer, smoke))
@@ -196,6 +201,10 @@ def main():
         if k % 250 == 0 and DEBUG:
             print(f"{t:.2f} {label} thrust {thrust:.2f} ctrl {d.ctrl[free].round(3)} com {com.round(3)} e_R {e_R.round(3)}")
     renderer.close()
+    if args.record:
+        np.savez(args.record, qpos=np.array(rec_q), throttle=np.array(rec_u), fps=args.fps,
+                 scene=str(args.build / "scene.xml"))
+        print("recorded", args.record)
     # one palette from frames across the flight, so the smoke's greys don't band
     sample = frames[::max(1, len(frames) // 12)]
     sheet = Image.new("RGB", (w_px, h_px * len(sample)))
