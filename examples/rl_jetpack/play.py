@@ -150,7 +150,12 @@ for k in range(0, len(frames_q), every):
                                        f"{100 * frames_t[k][1]:3.0f}%", fill=(30, 30, 30))
     imgs.append(img)
 r.close()
-pal = imgs[len(imgs) // 2].quantize(colors=128, method=Image.Quantize.MEDIANCUT)
+# one palette from frames across the whole course (so the water, plumes and box keep their colours)
+sample = imgs[::max(1, len(imgs) // 12)]
+sheet = Image.new("RGB", (w, h * len(sample)))
+for i, im in enumerate(sample):
+    sheet.paste(im, (0, i * h))
+pal = sheet.quantize(colors=160, method=Image.Quantize.MEDIANCUT)
 imgs = [im.quantize(palette=pal, dither=Image.Dither.NONE) for im in imgs]
 imgs[0].save(a.out, save_all=True, append_images=imgs[1:], duration=int(1000 / a.fps), loop=0, optimize=True)
 print("wrote", a.out, len(imgs), "frames")

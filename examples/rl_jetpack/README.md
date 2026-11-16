@@ -79,3 +79,24 @@ What did not work:
 Next run: a bonus for getting past the box and a higher box only after clean passes; a larger
 walking fan cost; and for the moon run, reward the trunk's rise in flight (or a commanded stride
 period) rather than air time alone.
+
+## Run 4: long jump, flat feet, box fixes (1.5 B steps, 166 minutes on one H100)
+
+![run 4: run up, over a 40 cm puddle, moon run, fly, land](media/run4_long_jump.gif)
+
+Added: a puddle across the path (a foot in the water ends the episode) with the trunk held
+within 10 cm of standing height and fan boosts capped at 0.4 s, so the long jump is not a
+flight; a penalty on tilted soles; a pass bonus and forward-progress reward for obstacles, a
+gentler curriculum drop, 3x the walking fan cost; and a sign fix in the obstacle sensor.
+
+- **Puddles: cleared, but by gliding, not leaping.** It clears every puddle it is given,
+  25-80 cm (the curriculum only reached 30 cm, in the last quarter of the run), without a
+  splash. The crossing is one 0.9 s airborne stretch covering 0.75-0.8 m, with the fans at about
+  40 % (80 % of the weight; 60 % peak) and the trunk only 2 cm above standing height. It pays
+  the boost-cap penalty rather than risk the water: a low fan-carried glide, halfway between
+  a jump and a flight. The run-up uses ~20 % fan.
+- **Boxes: still stops at the edge**, now even at 10 cm in the replay (training reached boxes
+  of 6-11 cm, up from 3-6 cm). On the 15 cm course it waits, then flies over on command and
+  lands, as run 1 did.
+- **Flat feet**: the sole-tilt penalty is paid throughout (it did not go to zero); see the GIF.
+- The moon run, flight, hover and landing still work; it never fell on the puddle courses.
