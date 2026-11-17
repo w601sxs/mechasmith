@@ -38,7 +38,7 @@ ap.add_argument("--puddle", type=float, default=None, help="long-jump course ove
 ap.add_argument("--scene", default=str(ROOT / "build/microduck_jetpack/scene.xml"))
 ap.add_argument("--fps", type=int, default=15)
 ap.add_argument("--record", default=None,
-                help="also save qpos and fan throttles at 30 fps (.npz, for microduck_jetpack/blender/export.py)")
+                help="also save qpos, fan throttles, commands and segment labels at 30 fps (.npz, for microduck_jetpack/blender/export.py)")
 a = ap.parse_args()
 
 raw = Path(a.policy).read_bytes()
@@ -73,9 +73,10 @@ state = reset(jax.random.PRNGKey(1))
 info = dict(state.info, obstacle=jp.array(PUD is None), puddle=jp.array(PUD is not None), airborne=jp.array(False),
             box=jp.array([BOX_X, a.box] if PUD is None else [50.0, 0.0]),
             pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()), td_age=jp.ones(2),
-            passed=jp.array(False), cmd_now=jp.zeros(6), thrust=jp.zeros(2))
+            passed=jp.array(False), cmd_now=jp.zeros(6), thrust=jp.zeros(2),
+            edge=jp.array(False), top=jp.array(False), topped=jp.array(False), chain=jp.array(False))
 state = state.replace(info=info)
-frames_q, frames_t, frames_l, log = [], [], [], []
+frames_q, frames_t, frames_l, frames_c, log = [], [], [], [], []
 fell = False
 for cmd, secs, label in SCRIPT:
     n = 0
@@ -88,6 +89,7 @@ for cmd, secs, label in SCRIPT:
         frames_q.append(np.asarray(ps.q))
         frames_t.append(np.asarray(state.info["thrust"]))
         frames_l.append(label)
+        frames_c.append(cmd)
         n += 1
         if float(state.done):
             fell = True
@@ -100,7 +102,8 @@ for cmd, secs, label in SCRIPT:
         break
 if a.record:
     idx = np.round(np.arange(0, len(frames_q) * env.dt, 1 / 30) / env.dt).astype(int).clip(0, len(frames_q) - 1)
-    np.savez(a.record, qpos=np.array(frames_q)[idx], throttle=np.array(frames_t)[idx], fps=30, scene=a.scene)
+    np.savez(a.record, qpos=np.array(frames_q)[idx], throttle=np.array(frames_t)[idx], fps=30, scene=a.scene,
+             command=np.array(frames_c)[idx], label=np.array(frames_l)[idx])
     print("recorded", a.record, len(idx), "frames")
 far = BOX_X + BOX_HALF[0] if PUD is None else PUD[0] + PUD[1]
 past = max(q[0] for q in frames_q) > far

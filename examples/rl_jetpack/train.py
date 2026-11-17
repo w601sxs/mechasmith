@@ -18,6 +18,7 @@ from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.agents.ppo import train as ppo
 
 from jet_env import EPISODE, JetDuck
+from scorecard import make_scorecard
 
 try:
     from train_report import report
@@ -30,6 +31,7 @@ ap.add_argument("--steps", type=int, default=150_000_000)
 ap.add_argument("--envs", type=int, default=8192)
 ap.add_argument("--smoke", action="store_true")
 ap.add_argument("--s3", default=None, help="s3://bucket/prefix for resumable checkpoints (one per evaluation)")
+ap.add_argument("--init", default=None, help="s3://.../ckpt.pkl to warm-start from when there is no checkpoint to resume")
 a = ap.parse_args()
 if a.smoke:
     a.steps, a.envs = 20_000, 32
@@ -55,8 +57,17 @@ if a.s3:
                 ck = pickle.load(f)
             DONE, RESTORE = int(ck["step"]), ck["params"]
             report("resume", {"from_step": DONE, "uri": a.s3})
-        except Exception as ex:   # no checkpoint yet: a fresh start
+        except Exception as ex:   # no checkpoint yet: a fresh start (or warm, from --init)
             report("fresh", {"uri": a.s3, "note": str(ex)[:200]})
+            if a.init:
+                try:
+                    ib, ik = a.init[5:].split("/", 1)
+                    s3.download_file(ib, ik, "/tmp/init.pkl")
+                    with open("/tmp/init.pkl", "rb") as f:
+                        RESTORE = pickle.load(f)["params"]
+                    report("init", {"uri": a.init})
+                except Exception as ex2:
+                    report("init_failed", {"error": str(ex2)[:300]})
         s3.put_object(Bucket=bucket, Key=prefix.rstrip("/") + "/_probe.txt", Body=b"ok")
     except Exception as ex:
         report("s3_failed", {"error": str(ex)[:300]})
@@ -64,12 +75,13 @@ if a.s3:
 REMAINING = max(a.steps - DONE, 0)
 
 
-TRAIN = {}   # curriculum numbers from the training metrics (obstacle level, share flying, boxes passed)
+TRAIN = {}
+CARD = {}    # the scorecard, built on the first evaluation   # curriculum numbers from the training metrics (obstacle level, share flying, boxes passed)
 
 
 def progress(step, metrics):
     n = max(float(metrics.get("episode/length", EPISODE)), 1)
-    for k in ("level", "plevel", "flying", "moon", "passed", "cleared"):
+    for k in ("level", "plevel", "flying", "moon", "passed", "cleared", "courses"):
         if f"episode/{k}" in metrics:
             TRAIN[k] = round(float(metrics[f"episode/{k}"]) / n, 3)
     if not any(k.startswith("eval/") for k in metrics):
@@ -97,6 +109,14 @@ def send_policy(kind, params, **extra):
 def snapshot(step, make_policy, params):   # a policy at every evaluation, for mid-run GIFs
     step = int(step) + DONE
     send_policy("snapshot_chunk", params, step=step)
+    try:
+        if "fn" not in CARD:
+            CARD["fn"] = make_scorecard(JetDuck(kick_vel=0.0), make_policy, steps=200 if a.smoke else 700)
+        sc = CARD["fn"](params)
+        print(json.dumps({"scorecard": sc, "step": step}), flush=True)
+        report("scorecard", {"step": step, **sc})
+    except Exception as ex:
+        report("scorecard_failed", {"error": str(ex)[:300]})
     print(json.dumps({"snapshot": step}), flush=True)
     if CKPT and int(step) > DONE:
         try:

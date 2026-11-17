@@ -29,4 +29,5 @@ run venv python3 -m venv /tmp/venv
 PY=/tmp/venv/bin/python
 run install $PY -m pip install -q "jax[cuda12]==0.7.2" "brax==0.14.2" "mujoco==3.17.0" "mujoco-mjx==3.17.0" boto3
 run jax $PY -c "import jax; print(jax.devices()); import jax.numpy as jp; print(float(jp.ones(3).sum()))"
-run train $PY train.py --steps "$STEPS" --envs "$ENVS" ${S3:+--s3 "$S3"}
+INIT=${4:-}          # s3://.../ckpt.pkl: warm start
+run train $PY train.py --steps "$STEPS" --envs "$ENVS" ${S3:+--s3 "$S3"} ${INIT:+--init "$INIT"}
