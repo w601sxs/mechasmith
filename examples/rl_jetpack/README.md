@@ -217,5 +217,6 @@ Not done:
 - **Hop got worse late in run 8c**: at 1.2 B steps hopping on command bounds at ~3 m/s (0.25
   commanded) and drifts, and one of three courses fell while hopping; the reel uses the 500 M
   snapshot, which completes the course from all 3 start seeds.
-- Sensing is still ideal (the obstacle's edges and the "water" flag come from the simulator);
-  see the camera plan in the session notes before any hardware run.
+- Sensing is still ideal: the obstacle's edges, the "water" flag, body velocity and height above
+  ground come from the simulator. Before hardware these need simulated sensors (a head-camera
+  CNN for the obstacle and water, a state estimate for velocity and height).
