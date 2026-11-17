@@ -8,7 +8,7 @@ EXPORT_DIR comes from export.py. The duck's geoms are loaded as they are and key
 recorded poses; each nozzle exit is a small disc that is a Mantaflow smoke inflow, its exit speed
 and density keyframed from the fan's throttle and its normal along the exhaust, so the jet tilts
 with the nacelle. The floor is the bottom wall of the smoke domain (the jets spread along it), a
-box is a collision object, and the camera follows the duck like fly.py's. Frames go to
+box is a collision object, and the camera follows the duck like fly.py's (camera.py: it climbs when a box would block the view). Frames go to
 OUT_DIR/frames, the bake to OUT_DIR/cache.
 """
 import json
@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 import bpy
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from camera import keyframe_camera  # noqa: E402
 import numpy as np
 from mathutils import Quaternion, Vector
 
@@ -288,20 +291,7 @@ cam.data.angle = math.radians(42)
 cam.data.clip_start = 0.02
 sc.collection.objects.link(cam)
 sc.camera = cam
-centre = pose[:, :, :3].mean(axis=1)
-look = centre[f0 - 1].copy()
-fps = meta["fps"]
-for t in range(f0 - 1, f1):
-    look += (1 - 0.7 ** (15 / fps)) * (centre[t] - look)     # fly.py's camera smoothing, per frame
-    az = math.radians(140 + 25 * math.sin(0.25 * t / fps))
-    el = math.radians(-14)
-    fwd = Vector((math.cos(el) * math.cos(az), math.cos(el) * math.sin(az), math.sin(el)))
-    tgt = Vector(look) + Vector((0, 0, 0.02))
-    cam.location = tgt - 1.05 * fwd
-    cam.rotation_mode = "QUATERNION"
-    cam.rotation_quaternion = fwd.to_track_quat("-Z", "Y")
-    cam.keyframe_insert("location", frame=t + 1)
-    cam.keyframe_insert("rotation_quaternion", frame=t + 1)
+keyframe_camera(cam, pose, obstacles, f0, f1, meta["fps"])
 
 # ---- render settings
 r = sc.render

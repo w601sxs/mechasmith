@@ -81,7 +81,7 @@ haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 
 --record`), `--adaptive` simulates only where the smoke is: the 35 s, 10 m run 6 course at grid
 800 (1.4 cm cells) bakes in about 7 minutes.
 
-Obstacles carry through to Blender. `rl_jetpack/course.py --record` saves its list of boxes and puddles, and `export.py` passes it on; `--box` and `--puddle` add one more for recordings that don't save theirs. In the render, boxes are solid fluid effectors, so the exhaust hits them and spreads over the top. Puddles are glossy, faintly rippled water slabs.
+Obstacles carry through to Blender. `rl_jetpack/course.py --record` saves its list of boxes and puddles, and `export.py` passes it on; `--box` and `--puddle` add one more for recordings that don't save theirs. In the render, boxes are solid fluid effectors, so the exhaust hits them and spreads over the top. Puddles are glossy, faintly rippled water slabs. The chase camera (`blender/camera.py`) swings round the duck, and climbs only if it has to, whenever a box would block the view. It starts the move a second early and eases it, so the camera glides instead of jumping.
 
 ### Instrument HUD
 
