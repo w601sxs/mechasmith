@@ -81,6 +81,8 @@ haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 
 --record`), `--adaptive` simulates only where the smoke is: the 35 s, 10 m run 6 course at grid
 800 (1.4 cm cells) bakes in about 7 minutes.
 
+Obstacles carry through to Blender. `rl_jetpack/course.py --record` saves its list of boxes and puddles, and `export.py` passes it on; `--box` and `--puddle` add one more for recordings that don't save theirs. In the render, boxes are solid fluid effectors, so the exhaust hits them and spreads over the top. Puddles are glossy, faintly rippled water slabs.
+
 ### Instrument HUD
 
 `blender/hud.py run.npz OUT/frames OUT/hud` adds a slim instrument dock under the scene, so the scene itself is left uncovered. Pass `--overlay` to lay the dock over the bottom edge of the frame instead. Left to right, the dock shows:

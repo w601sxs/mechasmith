@@ -40,7 +40,8 @@ RED = (255, 92, 80)
 BLUE = (110, 168, 255)
 MODE_COL = {"stand": (130, 140, 155), "walk": (92, 200, 120), "hop": (190, 130, 255),
             "moon run": (110, 168, 255), "take off": (255, 184, 64), "fly": (255, 140, 64),
-            "hover": (255, 210, 90), "land": (64, 214, 196), "run and jump": (255, 120, 150)}
+            "hover": (255, 210, 90), "land": (64, 214, 196), "run and jump": (255, 120, 150),
+            "run": (255, 120, 150), "stop": (130, 140, 155)}    # "run" after "moon run": first match wins
 
 
 def font(px, k=SS, bold=False):
@@ -248,7 +249,7 @@ def draw_dock(T, t, W, overlay):
             xt = 664 + 124 * min(max(tick, 0), 1)
             dr.line(S(xt, y + 13, xt, y + 25), fill=INK, width=max(1, int(k)))
     alt = max(float(T["alt"][t]), 0)
-    meter(12, "ALT", f"{100 * alt:.0f}", " cm", alt / 0.8, AMBER)
+    meter(12, "ALT", f"{100 * alt:.0f}", " cm", alt / 1.2, AMBER)
     sp = float(T["speed"][t])
     c = None if T["cmd"] is None else math.hypot(*T["cmd"][t][:2])
     meter(50, "SPEED", f"{sp:.2f}", " m/s", sp / 1.0, BLUE, None if c is None else c / 1.0)

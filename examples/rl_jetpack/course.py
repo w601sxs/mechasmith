@@ -40,7 +40,7 @@ ap.add_argument("--wall", type=float, default=0.40, help="tall box (flown over),
 ap.add_argument("--scene", default=str(ROOT / "build/microduck_jetpack/scene.xml"))
 ap.add_argument("--fps", type=int, default=15)
 ap.add_argument("--size", default="480x360")
-ap.add_argument("--record", default=None, help="also save qpos and fan throttles at 30 fps (.npz, for Blender)")
+ap.add_argument("--record", default=None, help="also save qpos, fan throttles, commands and stage labels at 30 fps (.npz, for Blender)")
 a = ap.parse_args()
 
 STAND, WALK, RUN = (0, 0, 0, 0, 0, 0), (0.25, 0, 0, 0, 0, 0), (0.8, 0, 0, 0, 0, 0)
@@ -86,7 +86,7 @@ state = state.replace(info=info)
 
 placed = []            # every obstacle, for the replay: ("box", centre x, top) / ("pud", centre x, half length)
 cur = None             # the current one: (kind, near x, far x)
-frames_q, frames_t, frames_l, log = [], [], [], []
+frames_q, frames_t, frames_l, frames_c, log = [], [], [], [], []
 fell = False
 for label, cmd, obst, (cond, arg) in STAGES:
     x0 = float(state.pipeline_state.x.pos[0, 0])
@@ -129,6 +129,7 @@ for label, cmd, obst, (cond, arg) in STAGES:
         frames_q.append(np.asarray(state.pipeline_state.q))
         frames_t.append(np.asarray(state.info["thrust"]))
         frames_l.append(label)
+        frames_c.append(c)
         if float(state.done):
             fell = True
             break
@@ -152,7 +153,7 @@ print(json.dumps({"completed": not fell and all(not s["timed_out"] for s in log)
 if a.record:
     idx = np.round(np.arange(0, len(frames_q) * DT, 1 / 30) / DT).astype(int).clip(0, len(frames_q) - 1)
     np.savez(a.record, qpos=np.array(frames_q)[idx], throttle=np.array(frames_t)[idx], fps=30, scene=a.scene,
-             obstacles=json.dumps(placed))
+             obstacles=json.dumps(placed), command=np.array(frames_c)[idx], label=np.array(frames_l)[idx])
     print("recorded", a.record, len(idx), "frames")
 
 

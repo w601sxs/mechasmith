@@ -4,6 +4,9 @@ axis and throttle per frame.
 
 usage: python export.py run.npz OUT_DIR [--box X TOP] [--puddle X HALF]
 
+Obstacles saved in the recording (rl_jetpack/course.py --record) are exported as they are; --box
+and --puddle add one more (for play.py and fly.py recordings, which don't save theirs).
+
 run.npz comes from `fly.py --record run.npz` (or `rl_jetpack/play.py --record`): qpos per frame,
 fan throttles, fps and the scene path. Then render with blender/render.py.
 """
@@ -68,6 +71,12 @@ for t in range(F):
         noz[t, j] = np.r_[d.site_xpos[s] - axis * EXIT, axis, rec["throttle"][t][j]]
 np.save(a.out / "pose.npy", pose)
 np.save(a.out / "nozzles.npy", noz)
-json.dump(dict(fps=int(rec["fps"]), frames=F, geoms=geoms,
-               box=a.box, puddle=a.puddle), open(a.out / "scene.json", "w"), indent=1)
+# obstacles: ["box", centre x, top] / ["pud", centre x, half length] (course.py --record), or --box/--puddle
+obstacles = json.loads(str(rec["obstacles"])) if "obstacles" in rec.files else []
+if a.box:
+    obstacles.append(["box", *a.box])
+if a.puddle:
+    obstacles.append(["pud", *a.puddle])
+json.dump(dict(fps=int(rec["fps"]), frames=F, geoms=geoms, obstacles=obstacles),
+          open(a.out / "scene.json", "w"), indent=1)
 print(f"exported {len(geoms)} geoms x {F} frames, {len(fans)} fans -> {a.out}")

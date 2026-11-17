@@ -148,22 +148,43 @@ chk.inputs["Color2"].default_value = (0.26, 0.26, 0.28, 1)
 nt.links.new(chk.outputs["Color"], nt.nodes["Principled BSDF"].inputs["Base Color"])
 floor.data.materials.append(fm)
 
-if meta.get("box"):
-    bx, top = meta["box"]
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(bx, 0, top / 2))
-    box = bpy.context.object
-    box.scale = (0.4, 1.2, top)
-    bpy.ops.object.transform_apply(scale=True)
-    box.data.materials.append(material("box", (0.55, 0.6, 0.7, 1)))
-    mod = box.modifiers.new("Fluid", "FLUID")
-    mod.fluid_type = "EFFECTOR"
+obstacles = list(meta.get("obstacles", []))
+if meta.get("box"):                                      # older exports
+    obstacles.append(["box", *meta["box"]])
 if meta.get("puddle"):
-    px, half = meta["puddle"]
-    bpy.ops.mesh.primitive_plane_add(size=1, location=(px, 0, 0.001))
-    pud = bpy.context.object
-    pud.scale = (2 * half, 1.2, 1)
-    pm = material("water", (0.2, 0.45, 0.8, 1), rough=0.05)
-    pud.data.materials.append(pm)
+    obstacles.append(["pud", *meta["puddle"]])
+for i, (kind, x, size) in enumerate(obstacles):
+    if kind == "box":                                    # 0.4 m long, 1.2 m wide, on the floor (BOX_HALF)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, size / 2))
+        box = bpy.context.object
+        box.name = f"box{i}"
+        box.scale = (0.4, 1.2, size)
+        bpy.ops.object.transform_apply(scale=True)
+        bev = box.modifiers.new("Bevel", "BEVEL")         # catch a highlight on the edges
+        bev.width, bev.segments = 0.006, 3
+        box.data.materials.append(material("box", (0.55, 0.6, 0.7, 1)))
+        mod = box.modifiers.new("Fluid", "FLUID")          # the smoke hits it and spreads over the top
+        mod.fluid_type = "EFFECTOR"
+    else:                                                # a puddle: a thin glossy water slab, drawn only
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 0, 0.003))
+        pud = bpy.context.object
+        pud.name = f"puddle{i}"
+        pud.scale = (2 * size, 1.2, 0.006)
+        bpy.ops.object.transform_apply(scale=True)
+        bev = pud.modifiers.new("Bevel", "BEVEL")
+        bev.width, bev.segments = 0.003, 2
+        pm = material("water", (0.10, 0.28, 0.55, 1), rough=0.03)
+        bsdf = pm.node_tree.nodes["Principled BSDF"]
+        bsdf.inputs["IOR"].default_value = 1.33
+        if "Coat Weight" in bsdf.inputs:
+            bsdf.inputs["Coat Weight"].default_value = 1.0
+        wave = pm.node_tree.nodes.new("ShaderNodeTexNoise")     # faint ripples in the normals
+        wave.inputs["Scale"].default_value = 18
+        bump = pm.node_tree.nodes.new("ShaderNodeBump")
+        bump.inputs["Strength"].default_value = 0.08
+        pm.node_tree.links.new(wave.outputs["Fac"], bump.inputs["Height"])
+        pm.node_tree.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+        pud.data.materials.append(pm)
 
 # ---- smoke domain around everything the duck and its jets reach
 lo = np.minimum(pose[f0 - 1:f1, :, :3].min(axis=(0, 1)), noz[f0 - 1:f1, :, :3].min(axis=(0, 1)))
