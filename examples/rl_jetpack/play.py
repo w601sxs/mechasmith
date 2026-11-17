@@ -74,7 +74,7 @@ info = dict(state.info, obstacle=jp.array(PUD is None), puddle=jp.array(PUD is n
             box=jp.array([BOX_X, a.box] if PUD is None else [50.0, 0.0]),
             pud=jp.array(PUD if PUD is not None else (60.0, 0.1)), boost=jp.zeros(()), td_age=jp.ones(2),
             passed=jp.array(False), cmd_now=jp.zeros(6), thrust=jp.zeros(2),
-            edge=jp.array(False), top=jp.array(False), topped=jp.array(False), chain=jp.array(False))
+            edge=jp.array(False), top=jp.array(False), topped=jp.array(False), climbed=jp.array(False), chain=jp.array(False))
 state = state.replace(info=info)
 frames_q, frames_t, frames_l, frames_c, log = [], [], [], [], []
 fell = False

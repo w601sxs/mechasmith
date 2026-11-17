@@ -33,7 +33,7 @@ def make_scorecard(env, make_policy, steps=700, seeds=3):
         ps = env.pipeline_init(q, jp.zeros(env.sys.nv))
         ps = ps.replace(mocap_pos=ps.mocap_pos.at[0].set(jp.array([box[0], 0.0, box[1] - BOX_HALF[2]])))
         info = dict(st.info, obstacle=is_box, puddle=is_pud, airborne=jp.array(False), box=box, pud=pud,
-                    edge=k == 1, top=k == 2, top_h=L, topped=k == 2, chain=jp.array(False), passed=jp.array(False), command=cmd,
+                    edge=k == 1, top=k == 2, top_h=L, topped=k == 2, climbed=jp.array(False), chain=jp.array(False), passed=jp.array(False), command=cmd,
                     cmd_now=jp.zeros(6), thrust=jp.zeros(2), boost=jp.zeros(()), step=jp.array(1))
         return State(ps, env._obs(ps, info), st.reward, st.done, st.metrics, info)
 

@@ -88,6 +88,11 @@ FAN_COST = (6.0, 0.3, 15.0, 2.0)    # fan_power multiplier walking, flying, hopp
 # its far edge (told to walk off). The leap pays the distance flown beyond 6 cm for take-offs
 # within 0.4 m of the puddle. Once past an obstacle, a new one of the same kind (box at this
 # duck's level, or puddle) appears 0.8-1.5 m ahead, so an episode has a course of them.
+# Run 8b (from run 8 at 313 M steps): run 8 stopped at even a 10 cm box after 313 M steps, toes
+# against its face. Any pass raised the box height (flights on command, walking off a box it was
+# started on, even puddles), so walk-in boxes were far taller than it could climb. Now only a pass
+# after climbing onto the box itself raises it, and boxes are 30-100 % (not 50-100 %) of the level.
+# Puddles: from 0.4 m before a puddle to past it the fans cost a third (the boost cap still holds).
 CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)
@@ -203,7 +208,7 @@ class JetDuck(PipelineEnv):
         thrust = jp.where(airborne, self._hover, 0.0) * jp.ones(2)
         info.update(box=box, obstacle=obstacle, pud=pud, puddle=puddle, boost=jp.zeros(()), td_age=jp.ones(2),
                     airborne=airborne, passed=jp.zeros((), bool), command=cmd, toff_x=jp.zeros(()),
-                    topped=top, chain=jp.array(True),
+                    topped=top, climbed=jp.array(False), chain=jp.array(True),
                     cmd_now=jp.where(airborne, cmd, jp.zeros(6)),
                     last_act=jp.zeros(self.action_size), last_target=self._default, thrust=thrust,
                     phase=jp.zeros(()), step=0, air_time=jp.zeros(2), single=jp.zeros(2),
@@ -221,7 +226,7 @@ class JetDuck(PipelineEnv):
         u = jax.random.uniform(k1)
         x = jp.where(edge, BOX_HALF[0] + 0.10 + 0.15 * u,
                      jp.where(top, 0.08 + 0.17 * u - BOX_HALF[0], x0 + 0.6 + 0.6 * u))
-        h = jp.where(top, top_h, jax.random.uniform(k2, minval=0.5, maxval=1.0) * level)
+        h = jp.where(top, top_h, jax.random.uniform(k2, minval=0.3, maxval=1.0) * level)
         return jp.where(obstacle, jp.array([x, h]), jp.array([50.0, 0.0]))
 
     def _place_puddle(self, rng, puddle, plevel, x0=0.0):
@@ -252,6 +257,8 @@ class JetDuck(PipelineEnv):
         dxb = ps0.x.pos[0, 0] - box[0]
         at_box = info0["obstacle"] & (dxb > -(BOX_HALF[0] + 0.45)) & (dxb < BOX_HALF[0] + 0.1) & (box[1] > 0.08)
         free_fans = (info0["cmd_now"][3] > 0.05) | (info0["cmd_now"][4] > 0.2) | at_box
+        pud0 = info0["pud"]
+        at_pud = info0["puddle"] & (ps0.x.pos[0, 0] > pud0[0] - pud0[1] - 0.4) & (ps0.x.pos[0, 0] < pud0[0] + pud0[1] + 0.1)
         want_t = jp.where((info0["boost"] > BOOST_MAX) & ~free_fans, jp.minimum(want_t, BOOST_FRAC - 0.01), want_t)
         thrust = info0["thrust"] + (want_t - info0["thrust"]) * (self.dt / (SPOOL_TAU + self.dt))
         want = jp.clip(self._default[self._jq] + action[2:] * self._action_scale, self._lo, self._hi)
@@ -356,7 +363,7 @@ class JetDuck(PipelineEnv):
             action_rate=jp.sum(jp.square(action - info0["last_act"])),
             stand_still=jp.sum(jp.abs(q[self._legs] - self._default[self._legs])) * (1 - moving) * walking,
             head_still=jp.sum(jp.square(q[self._head] - self._default[self._head])),
-            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], jp.where(at_box, FAN_COST[3],
+            fan_power=jp.mean(thrust) * jp.where(flying, FAN_COST[1], jp.where(at_box | at_pud, FAN_COST[3],
                                                  jp.where(hop, FAN_COST[2], FAN_COST[0]))) * ~moon,
             feet_flat=jp.sum(jp.sum(jp.square(sole_up[:, :2]), axis=1) * contact) * ~flying,
             boost_over=jp.clip(boost - BOOST_MAX, 0.0, 1.0) * ~flying * ~moon * ~at_box,
@@ -374,8 +381,10 @@ class JetDuck(PipelineEnv):
         r = {k: v * REWARDS[k] for k, v in r.items()}
         reward = jp.clip(sum(r.values()) * self.dt, 0.0, 10000.0)
 
-        # obstacle curriculum: past the box -> taller boxes for this duck; a fall -> half a step lower
-        level = jp.where(newly, info0["level"] + OBST_STEP, info0["level"])
+        # obstacle curriculum: taller boxes for this duck only after it got past one by climbing onto
+        # it (not by a commanded flight, nor walking off a box it started on); a fall -> half a step lower
+        climbed = info0["climbed"] | first_top
+        level = jp.where(newly & info0["obstacle"] & climbed, info0["level"] + OBST_STEP, info0["level"])
         level = jp.where(fallen & info0["obstacle"], info0["level"] - OBST_STEP / 2, level)
         level = jp.clip(level, OBST_START, OBST_TOP)
         plevel = jp.where(newly & puddle, info0["plevel"] + PUD_STEP, info0["plevel"])
@@ -399,6 +408,7 @@ class JetDuck(PipelineEnv):
         info["pud"] = jp.where(nxt, self._place_puddle(k_next, puddle, plevel, x0=x.pos[0, 0] - 0.2), pud)
         info["passed"] = passed & ~nxt
         info["topped"] = topped & ~nxt
+        info["climbed"] = climbed & ~nxt
         info["command"] = jp.where(seg_end, new_cmd, info0["command"])
         info["cmd_now"] = cmd
         # A fall or the time limit ends the episode; Brax restores the first pipeline state (so
@@ -412,6 +422,7 @@ class JetDuck(PipelineEnv):
         info["pud"] = jp.where(restart, self._place_puddle(box_rng, puddle, plevel), info["pud"])
         info["passed"] = jp.where(restart, False, info["passed"])
         info["topped"] = jp.where(restart, info0["top"], info["topped"])
+        info["climbed"] = jp.where(restart, False, info["climbed"])
         restart_cmd = jp.where(air & (jax.random.uniform(box_rng) < 0.5), new_cmd.at[3].set(0.0), new_cmd)
         info["command"] = jp.where(restart, restart_cmd, info["command"])
         info["cmd_now"] = jp.where(restart, jp.where(air, restart_cmd, jp.zeros(6)), cmd)
