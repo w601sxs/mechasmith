@@ -81,6 +81,23 @@ haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 
 --record`), `--adaptive` simulates only where the smoke is: the 35 s, 10 m run 6 course at grid
 800 (1.4 cm cells) bakes in about 7 minutes.
 
+### Instrument HUD
+
+`blender/hud.py run.npz OUT/frames OUT_HUD` draws instruments over the rendered frames:
+- **Fan thrust bars**, with the hover line, a one-second peak marker, and each nacelle's thrust vector seen from the side.
+- **A lift ring:** the share of the duck's weight the fans are carrying.
+- **An altitude tape.**
+- **Ground speed** against the commanded speed.
+- **A scrolling 3 s gait strip:** which sole is down, with the fan thrust traced under it.
+- **The current segment** on a course timeline.
+
+Everything is computed from the recording with MuJoCo: contacts, thrust axes, mass. Run it with the same Python as `export.py`, then encode with ffmpeg:
+
+```
+python examples/microduck_jetpack/blender/hud.py run.npz OUT/frames OUT/hud
+ffmpeg -framerate 30 -i OUT/hud/f%04d.png -c:v libx264 -pix_fmt yuv420p hud.mp4
+```
+
 ## What it took in mechasmith
 
 - **Thrust vectoring in the library.** `mjcf.hover_trim` now solves for the rotor thrusts *and*
