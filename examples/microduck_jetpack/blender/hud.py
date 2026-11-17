@@ -4,15 +4,15 @@ usage: python hud.py run.npz FRAMES_DIR OUT_DIR [--jobs 8]
 
 run.npz is the recording (`fly.py --record` / `rl_jetpack/play.py --record`); FRAMES_DIR holds
 the rendered frames (blender/render.py's OUT/frames/fNNNN.png, one per recorded frame). Writes
-OUT_DIR/fNNNN.png. The HUD shows:
+OUT_DIR/fNNNN.png with a slim instrument dock under the scene (or over its bottom edge with
+--overlay). Left to right:
 
-  top left      the segment being flown and a course timeline with a playhead
-  top right     ground speed against the commanded speed
-  right         an altitude tape (trunk height above standing)
-  bottom left   fan thrust bars (with the hover line and a peak marker) and each nacelle's
-                thrust vector seen from the side
-  bottom centre a scrolling gait strip: which sole is on the ground, with both fans' thrust traced
-  bottom right  how much of the duck's weight the fans are carrying
+  mode      the segment being flown, on a course timeline with a playhead
+  thrust    fan thrust bars (hover line, one-second peak marker) and each nacelle's thrust vector
+            seen from the side
+  gait      a scrolling 3 s strip of which sole is on the ground, with both fans' thrust traced
+  lift      how much of the duck's weight the fans are carrying
+  alt/speed trunk height above standing; ground speed against the commanded speed
 
 Everything is computed from the recording with MuJoCo (contacts, thrust axes, mass), nothing is
 read from the policy. Recordings without segment labels fall back to play.py's box course.
@@ -34,7 +34,6 @@ SS = 2                                    # supersampling for smooth edges
 
 INK = (236, 240, 245)
 DIM = (150, 160, 175)
-PANEL = (14, 18, 26, 150)
 TEAL = (64, 214, 196)
 AMBER = (255, 184, 64)
 RED = (255, 92, 80)
@@ -44,10 +43,10 @@ MODE_COL = {"stand": (130, 140, 155), "walk": (92, 200, 120), "hop": (190, 130, 
             "hover": (255, 210, 90), "land": (64, 214, 196), "run and jump": (255, 120, 150)}
 
 
-def font(px, bold=False):
+def font(px, k=SS, bold=False):
     for p in (["/System/Library/Fonts/SFNSMono.ttf", "/System/Library/Fonts/Menlo.ttc"]):
         try:
-            return ImageFont.truetype(p, px * SS, index=1 if bold and p.endswith("ttc") else 0)
+            return ImageFont.truetype(p, int(px * k), index=1 if bold and p.endswith("ttc") else 0)
         except OSError:
             pass
     return ImageFont.load_default()
@@ -126,189 +125,160 @@ def analyse(run):
                 alt=pos[:, 2] - STAND_Z, speed=speed, cmd=cmd, modes=modes, labels=labels, segs=segs)
 
 
-def panel(dr, box, r=14):
-    x0, y0, x1, y1 = (c * SS for c in box)
-    dr.rounded_rectangle((x0, y0, x1, y1), radius=r * SS, fill=PANEL, outline=(255, 255, 255, 28), width=SS)
+DW, DH = 800, 92                          # the dock in design units (scaled to the frame width)
+DOCK_BG = (12, 15, 22)
 
 
-def text(dr, xy, s, f, fill=INK, anchor="la"):
-    dr.text((xy[0] * SS, xy[1] * SS), s, font=f, fill=fill, anchor=anchor)
-
-
-def draw_hud(T, t, W, H, F_):
-    f_s, f_m, f_l = F_
-    im = Image.new("RGBA", (W * SS, H * SS), (0, 0, 0, 0))
+def draw_dock(T, t, W, overlay):
+    """One instrument strip, DW x DH design units, scaled to width W."""
+    k = W / DW * SS
+    H = int(round(DH * W / DW))
+    S = lambda *v: [c * k for c in v]
+    f_s, f_m, f_l = (font(px, k, b) for px, b in ((9, False), (12, False), (15, True)))
+    im = Image.new("RGBA", (int(W * SS), int(H * SS)), (0, 0, 0, 0))
     dr = ImageDraw.Draw(im)
-    S = lambda *v: [c * SS for c in v]
+    tx = lambda x, y, s, f, fill=INK, anchor="la": dr.text((x * k, y * k), s, font=f, fill=fill, anchor=anchor)
+    sep = lambda x: dr.line(S(x, 14, x, DH - 14), fill=(255, 255, 255, 30), width=max(1, int(k / 2)))
+    dr.line(S(0, 0.5, DW, 0.5), fill=(255, 255, 255, 40), width=max(1, int(k / 2)))
+    th = lambda j, tt=t: float(T["thr"][tt, j])
 
-    # ---- top left: mode chip + timeline
+    # ---- mode + course timeline
     mode = T["modes"][t]
     col = MODE_COL.get(mode, INK)
-    panel(dr, (16, 16, 346, 78))
-    dr.ellipse(S(30, 30, 42, 42), fill=col)
-    text(dr, (52, 26), mode.upper(), f_l, fill=INK)
+    dr.ellipse(S(16, 20, 26, 30), fill=col)
+    tx(34, 17, mode.upper(), f_l)
     sub = T["labels"][t]
     if sub.lower() != mode:
-        text(dr, (52, 50), sub[:40], f_s, fill=DIM)
-    x0, x1, y = 30, 332, 66
+        tx(34, 37, sub[:30], f_s, fill=DIM)
+    x0, x1, y = 16, 170, 64
     for name, a, b in T["segs"]:
         xa, xb = x0 + (x1 - x0) * a / T["F"], x0 + (x1 - x0) * b / T["F"]
-        c = MODE_COL.get(name, DIM)
-        on = a <= t < b
-        dr.rounded_rectangle(S(xa + 1, y, xb - 1, y + 6), radius=3 * SS, fill=c + ((255,) if on else (110,)))
+        dr.rounded_rectangle(S(xa + 0.7, y, xb - 0.7, y + 5), radius=2.5 * k,
+                             fill=MODE_COL.get(name, DIM) + ((255,) if a <= t < b else (95,)))
     px = x0 + (x1 - x0) * t / T["F"]
-    dr.polygon(S(px - 4, y - 5, px + 4, y - 5, px, y), fill=INK)
+    dr.polygon(S(px - 3.5, y - 5, px + 3.5, y - 5, px, y - 0.5), fill=INK)
+    tx(16, 74, f"{t / T['fps']:4.1f} s", f_s, fill=DIM)
+    sep(184)
 
-    # ---- top right: speed vs command
-    panel(dr, (W - 236, 16, W - 16, 78))
-    text(dr, (W - 222, 24), "GROUND SPEED", f_s, fill=DIM)
-    sp = T["speed"][t]
-    text(dr, (W - 30, 22), f"{sp:4.2f} m/s", f_m, fill=INK, anchor="ra")
-    bx0, bx1, by = W - 222, W - 30, 58
-    vmax = 1.0
-    dr.rounded_rectangle(S(bx0, by, bx1, by + 10), radius=5 * SS, fill=(255, 255, 255, 30))
-    w = (bx1 - bx0) * min(sp / vmax, 1)
-    if w > 2:
-        dr.rounded_rectangle(S(bx0, by, bx0 + w, by + 10), radius=5 * SS, fill=BLUE + (230,))
-    if T["cmd"] is not None:
-        c = math.hypot(*T["cmd"][t][:2])
-        cx = bx0 + (bx1 - bx0) * min(c / vmax, 1)
-        dr.line(S(cx, by - 4, cx, by + 14), fill=INK, width=2 * SS)
-        text(dr, (cx, by - 6), "cmd", f_s, fill=DIM, anchor="md")
-
-    # ---- right: altitude tape
-    tx0, tx1, ty0, ty1 = W - 74, W - 16, 96, H - 200
-    panel(dr, (tx0, ty0, tx1, ty1), r=12)
-    text(dr, ((tx0 + tx1) / 2, ty0 + 10), "ALT", f_s, fill=DIM, anchor="ma")
-    alt = T["alt"][t]
-    span, mid = 0.8, (ty0 + 30 + ty1 - 10) / 2       # metres shown on the tape
-    ppm = (ty1 - ty0 - 40) / span
-    for k in range(-10, 30):
-        a_ = k * 0.1
-        yy = mid - (a_ - alt) * ppm
-        if ty0 + 28 < yy < ty1 - 32:
-            major = k % 2 == 0
-            dr.line(S(tx0 + 8, yy, tx0 + (24 if major else 16), yy), fill=(255, 255, 255, 160 if major else 70),
-                    width=SS)
-            if major:
-                text(dr, (tx0 + 28, yy), f"{a_:.1f}", f_s, fill=DIM, anchor="lm")
-    gy = mid - (0 - alt) * ppm                       # standing height (the ground)
-    if ty0 + 28 < gy < ty1 - 8:
-        dr.line(S(tx0 + 6, gy, tx1 - 6, gy), fill=TEAL + (180,), width=SS)
-    dr.polygon(S(tx0 + 2, mid - 7, tx0 + 2, mid + 7, tx0 + 12, mid), fill=AMBER)
-    text(dr, ((tx0 + tx1) / 2, ty1 - 20), f"{100 * max(alt, 0):3.0f}cm", f_s, fill=INK, anchor="ma")
-
-    # ---- bottom left: thrust bars + thrust vectors
-    bx, byb = 16, H - 16
-    panel(dr, (bx, byb - 196, bx + 230, byb))
-    text(dr, (bx + 14, byb - 186), "FAN THRUST", f_s, fill=DIM)
-    bar_top, bar_bot = byb - 146, byb - 36
+    # ---- fan thrust: bars + thrust vectors
+    tx(196, 10, "THRUST", f_s, fill=DIM)
+    top, bot = 26, 70
     for j, name in enumerate(("L", "R")):
-        u = float(T["thr"][t, j])
+        u = th(j)
         peak = float(T["thr"][max(0, t - T["fps"]):t + 1, j].max())
-        x = bx + 22 + j * 58
-        dr.rounded_rectangle(S(x, bar_top, x + 30, bar_bot), radius=6 * SS, fill=(255, 255, 255, 26))
-        h = (bar_bot - bar_top) * min(u, 1)
-        if h > 1:
-            # gradient fill: colour of each slice by its thrust level
-            n = max(int(h), 1)
-            for k in range(n):
-                yy = bar_bot - k - 1
-                dr.rectangle(S(x + 2, yy, x + 28, yy + 1), fill=heat(k / (bar_bot - bar_top)) + (235,))
-        hy = bar_bot - (bar_bot - bar_top) * T["hover"][j]
-        for xx in range(x - 4, x + 34, 6):
-            dr.line(S(xx, hy, xx + 3, hy), fill=INK, width=SS)
-        py = bar_bot - (bar_bot - bar_top) * min(peak, 1)
-        dr.line(S(x + 2, py, x + 28, py), fill=INK + (200,), width=2 * SS)
-        text(dr, (x + 15, bar_bot + 6), f"{100 * u:3.0f}%", f_s, fill=INK, anchor="ma")
-        text(dr, (x + 15, bar_top - 4), name, f_s, fill=DIM, anchor="md")
-    hy = bar_bot - (bar_bot - bar_top) * T["hover"][1]
-    text(dr, (bx + 216, byb - 186), "┄ hover", f_s, fill=DIM, anchor="ra")
-    # thrust vector dials (side view): arrow along the jet, opposite the thrust
-    for j in range(2):
-        cx, cy, R = bx + 160 + j * 46, byb - 66, 18
-        dr.ellipse(S(cx - R, cy - R, cx + R, cy + R), outline=(255, 255, 255, 70), width=SS)
-        dr.line(S(cx, cy - R, cx, cy - R + 4), fill=DIM, width=SS)
+        x = 198 + j * 24
+        dr.rounded_rectangle(S(x, top, x + 12, bot), radius=3 * k, fill=(255, 255, 255, 24))
+        h = (bot - top) * min(u, 1)
+        for kk in range(int(h * k)):              # gradient fill, one device row at a time
+            yy = bot * k - kk - 1
+            dr.line((x * k + k, yy, (x + 12) * k - k, yy), fill=heat(kk / k / (bot - top)) + (240,))
+        hy = bot - (bot - top) * T["hover"][j]
+        for xx in range(-2, 14, 4):
+            dr.line(S(x + xx, hy, x + xx + 2, hy), fill=INK, width=max(1, int(k / 2)))
+        py = bot - (bot - top) * min(peak, 1)
+        dr.line(S(x + 1, py, x + 11, py), fill=INK + (200,), width=max(1, int(k)))
+        tx(x + 6, bot + 4, f"{100 * u:.0f}", f_s, anchor="ma")
+    for j in range(2):                            # side view of each nacelle's thrust
+        cx, cy, R = 264 + j * 30, 46, 11
+        dr.ellipse(S(cx - R, cy - R, cx + R, cy + R), outline=(255, 255, 255, 60), width=max(1, int(k / 2)))
         a = T["tilt"][t, j]
-        L = R * (0.35 + 0.65 * min(float(T["thr"][t, j]) / 0.6, 1))
+        L = R * (0.35 + 0.65 * min(th(j) / 0.6, 1))
         ex, ey = cx + L * math.sin(a), cy - L * math.cos(a)
-        c = heat(float(T["thr"][t, j]))
-        dr.line(S(cx, cy, ex, ey), fill=c, width=3 * SS)
-        hd = 6
-        dr.polygon(S(ex + hd * math.sin(a), ey - hd * math.cos(a),
-                     ex + hd * 0.6 * math.cos(a), ey + hd * 0.6 * math.sin(a),
-                     ex - hd * 0.6 * math.cos(a), ey - hd * 0.6 * math.sin(a)), fill=c)
-        text(dr, (cx, cy + R + 6), f"{math.degrees(a):+3.0f}°", f_s, fill=DIM, anchor="ma")
-    text(dr, (bx + 183, byb - 104), "VECTOR", f_s, fill=DIM, anchor="ma")
+        c = heat(th(j))
+        dr.line(S(cx, cy, ex, ey), fill=c, width=int(2 * k))
+        hd = 4.5
+        dr.polygon(S(ex + hd * math.sin(a), ey - hd * math.cos(a), ex + hd * .6 * math.cos(a),
+                     ey + hd * .6 * math.sin(a), ex - hd * .6 * math.cos(a), ey - hd * .6 * math.sin(a)), fill=c)
+        tx(cx, cy + R + 4, f"{math.degrees(a):+.0f}°", f_s, fill=DIM, anchor="ma")
+    tx(279, 10, "VECTOR", f_s, fill=DIM, anchor="ma")
+    sep(320)
 
-    # ---- bottom centre: gait strip + thrust traces
-    gx0, gx1, gy0, gy1 = 262, W - 196, H - 112, H - 16
-    panel(dr, (gx0, gy0, gx1, gy1))
-    text(dr, (gx0 + 14, gy0 + 8), "GAIT", f_s, fill=DIM)
-    text(dr, (gx1 - 14, gy0 + 8), "3 s", f_s, fill=DIM, anchor="ra")
+    # ---- gait strip + thrust traces, last 3 s
+    gx0, gx1 = 346, 556
+    tx(332, 10, "GAIT", f_s, fill=DIM)
+    tx(gx1, 10, "3 s", f_s, fill=DIM, anchor="ra")
     win = 3 * T["fps"]
-    lx0, lx1 = gx0 + 36, gx1 - 14
-    rows = [(gy0 + 32, "L"), (gy0 + 50, "R")]
-    for k, (ry, nm) in enumerate(rows):
-        text(dr, (gx0 + 14, ry + 5), nm, f_s, fill=DIM, anchor="lm")
-        dr.rounded_rectangle(S(lx0, ry, lx1, ry + 10), radius=3 * SS, fill=(255, 255, 255, 18))
+    for kf, (ry, nm) in enumerate(((26, "L"), (39, "R"))):
+        tx(332, ry + 4, nm, f_s, fill=DIM, anchor="lm")
+        dr.rounded_rectangle(S(gx0, ry, gx1, ry + 8), radius=2.5 * k, fill=(255, 255, 255, 18))
         run, a0 = False, 0
         for i in range(win + 1):
             tt = t - win + i
-            on = 0 <= tt < T["F"] and T["feet"][tt, k]
+            on = 0 <= tt < T["F"] and T["feet"][tt, kf]
             if on and not run:
                 run, a0 = True, i
             if run and (not on or i == win):
-                xa = lx0 + (lx1 - lx0) * a0 / win
-                xb = lx0 + (lx1 - lx0) * i / win
-                dr.rounded_rectangle(S(xa, ry, max(xb, xa + 2), ry + 10), radius=3 * SS, fill=TEAL + (230,))
+                xa, xb = gx0 + (gx1 - gx0) * a0 / win, gx0 + (gx1 - gx0) * i / win
+                dr.rounded_rectangle(S(xa, ry, max(xb, xa + 2), ry + 8), radius=2.5 * k, fill=TEAL + (230,))
                 run = False
-    ty_b, ty_t = gy1 - 8, gy0 + 66
+    yb, yt = 80, 54
+    dr.line(S(gx0, yb, gx1, yb), fill=(255, 255, 255, 25), width=max(1, int(k / 2)))
     for j, c in enumerate((AMBER, RED)):
-        pts = []
-        for i in range(win + 1):
-            tt = t - win + i
-            if tt < 0:
-                continue
-            u = float(T["thr"][tt, j])
-            pts.append((lx0 + (lx1 - lx0) * i / win, ty_b - (ty_b - ty_t) * min(u, 1)))
+        pts = [(gx0 + (gx1 - gx0) * i / win, yb - (yb - yt) * min(th(j, t - win + i), 1))
+               for i in range(win + 1) if t - win + i >= 0]
         if len(pts) > 1:
-            dr.line([c * SS for p in pts for c in p], fill=c + (220,), width=2 * SS, joint="curve")
-    text(dr, (gx0 + 14, (ty_b + ty_t) / 2), "fan", f_s, fill=DIM, anchor="lm")
+            dr.line([v * k for p in pts for v in p], fill=c + (220,), width=int(1.5 * k))
+    tx(332, (yb + yt) / 2, "fan", f_s, fill=DIM, anchor="lm")
+    sep(572)
 
-    # ---- bottom right: lift ring
-    cx, cy, R = W - 104, H - 104, 62
-    panel(dr, (W - 180, H - 180, W - 16, H - 16))
+    # ---- lift ring: share of the weight on the fans
+    cx, cy, R = 612, 48, 27
     frac = float(T["lift"][t])
-    a0, a1 = 135, 405                                # 270° arc: 0 .. 150 % of weight
-    dr.arc(S(cx - R, cy - R, cx + R, cy + R), a0, a1, fill=(255, 255, 255, 34), width=10 * SS)
+    a0, a1 = 135, 405                             # 270 deg = 0 .. 150 % of weight
+    dr.arc(S(cx - R, cy - R, cx + R, cy + R), a0, a1, fill=(255, 255, 255, 32), width=int(6 * k))
     end = a0 + (a1 - a0) * min(max(frac, 0) / 1.5, 1)
     if end > a0 + 1:
-        dr.arc(S(cx - R, cy - R, cx + R, cy + R), a0, end, fill=heat(min(frac, 1.2) / 1.4) + (240,), width=10 * SS)
-    tick = math.radians(a0 + (a1 - a0) / 1.5)        # 100 %: the fans alone hold it up
-    dr.line(S(cx + (R - 14) * math.cos(tick), cy + (R - 14) * math.sin(tick),
-              cx + (R + 7) * math.cos(tick), cy + (R + 7) * math.sin(tick)), fill=INK, width=2 * SS)
-    text(dr, (cx, cy - 12), f"{100 * max(frac, 0):3.0f}%", f_l, fill=INK, anchor="mm")
-    text(dr, (cx, cy + 12), "of weight", f_s, fill=DIM, anchor="mm")
-    text(dr, (cx, cy + 28), "on the fans", f_s, fill=DIM, anchor="mm")
+        dr.arc(S(cx - R, cy - R, cx + R, cy + R), a0, end, fill=heat(min(frac, 1.2) / 1.4) + (240,), width=int(6 * k))
+    tk = math.radians(a0 + (a1 - a0) / 1.5)
+    dr.line(S(cx + (R - 8) * math.cos(tk), cy + (R - 8) * math.sin(tk),
+              cx + (R + 5) * math.cos(tk), cy + (R + 5) * math.sin(tk)), fill=INK, width=max(1, int(k)))
+    tx(cx, cy - 2, f"{100 * max(frac, 0):.0f}%", f_m, anchor="mm")
+    tx(cx, cy + 11, "lift", f_s, fill=DIM, anchor="mm")
+    sep(652)
 
-    return im.resize((W, H), Image.LANCZOS)
+    # ---- altitude and speed
+    def meter(y, label, val, unit, frac_, colr, tick=None):
+        tx(664, y, label, f_s, fill=DIM)
+        tx(788, y - 2, f"{val}{unit}", f_m, anchor="ra")
+        dr.rounded_rectangle(S(664, y + 16, 788, y + 22), radius=3 * k, fill=(255, 255, 255, 26))
+        w = 124 * min(max(frac_, 0), 1)
+        if w > 1.5:
+            dr.rounded_rectangle(S(664, y + 16, 664 + w, y + 22), radius=3 * k, fill=colr + (235,))
+        if tick is not None:
+            xt = 664 + 124 * min(max(tick, 0), 1)
+            dr.line(S(xt, y + 13, xt, y + 25), fill=INK, width=max(1, int(k)))
+    alt = max(float(T["alt"][t]), 0)
+    meter(12, "ALT", f"{100 * alt:.0f}", " cm", alt / 0.8, AMBER)
+    sp = float(T["speed"][t])
+    c = None if T["cmd"] is None else math.hypot(*T["cmd"][t][:2])
+    meter(50, "SPEED", f"{sp:.2f}", " m/s", sp / 1.0, BLUE, None if c is None else c / 1.0)
+
+    bg = Image.new("RGBA", im.size, DOCK_BG + ((185,) if overlay else (255,)))
+    bg.alpha_composite(im)
+    return bg.resize((W, H), Image.LANCZOS)
 
 
-_T = None
+_T, _OVERLAY = None, False
 
 
-def _init(T):
-    global _T
-    _T = T
+def _init(T, overlay):
+    global _T, _OVERLAY
+    _T, _OVERLAY = T, overlay
 
 
 def _frame(args):
     t, src, dst = args
     base = Image.open(src).convert("RGBA")
     W, H = base.size
-    hud = draw_hud(_T, t, W, H, (font(11), font(14), font(18, bold=True)))
-    Image.alpha_composite(base, hud).convert("RGB").save(dst)
+    dock = draw_dock(_T, t, W, _OVERLAY)
+    if _OVERLAY:                                   # over the bottom of the frame
+        base.alpha_composite(dock, (0, H - dock.height))
+        out = base
+    else:                                          # below it: the scene stays whole
+        out = Image.new("RGBA", (W, H + dock.height))
+        out.paste(base, (0, 0))
+        out.paste(dock, (0, H))
+    out.convert("RGB").save(dst)
     return t
 
 
@@ -318,6 +288,7 @@ if __name__ == "__main__":
     ap.add_argument("frames", type=Path)
     ap.add_argument("out", type=Path)
     ap.add_argument("--jobs", type=int, default=8)
+    ap.add_argument("--overlay", action="store_true", help="draw the dock over the bottom of the frame, not below it")
     ap.add_argument("--only", type=int, nargs="*", default=None, help="just these frame numbers (1-based)")
     a = ap.parse_args()
     T = analyse(a.run)
@@ -329,7 +300,7 @@ if __name__ == "__main__":
             continue
         t = min(round(i * (T["F"] - 1) / max(len(files) - 1, 1)), T["F"] - 1)
         jobs.append((t, f, a.out / f.name))
-    with Pool(a.jobs, initializer=_init, initargs=(T,)) as p:
+    with Pool(a.jobs, initializer=_init, initargs=(T, a.overlay)) as p:
         for k, _ in enumerate(p.imap_unordered(_frame, jobs, chunksize=8)):
             if k % 100 == 0:
                 print(f"hud {k}/{len(jobs)}", flush=True)

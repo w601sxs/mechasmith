@@ -83,13 +83,12 @@ haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 
 
 ### Instrument HUD
 
-`blender/hud.py run.npz OUT/frames OUT_HUD` draws instruments over the rendered frames:
-- **Fan thrust bars**, with the hover line, a one-second peak marker, and each nacelle's thrust vector seen from the side.
-- **A lift ring:** the share of the duck's weight the fans are carrying.
-- **An altitude tape.**
-- **Ground speed** against the commanded speed.
-- **A scrolling 3 s gait strip:** which sole is down, with the fan thrust traced under it.
+`blender/hud.py run.npz OUT/frames OUT/hud` adds a slim instrument dock under the scene, so the scene itself is left uncovered. Pass `--overlay` to lay the dock over the bottom edge of the frame instead. Left to right, the dock shows:
 - **The current segment** on a course timeline.
+- **Fan thrust bars**, with the hover line and a one-second peak marker, and each nacelle's thrust vector seen from the side.
+- **A scrolling 3 s gait strip:** which sole is down, with the fan thrust traced under it.
+- **A lift ring:** the share of the duck's weight the fans are carrying.
+- **Altitude, and ground speed** against the commanded speed.
 
 Everything is computed from the recording with MuJoCo: contacts, thrust axes, mass. Run it with the same Python as `export.py`, then encode with ffmpeg:
 
