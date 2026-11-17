@@ -55,7 +55,7 @@ REWARDS = dict(tracking_lin_vel=4.0, tracking_ang_vel=1.5, height=3.0, gait_phas
                fan_power=-1.0, landing=-2.0, lightness=2.0, moon_air_time=1.5, moon_rise=20.0,
                obstacle_progress=3.0, obstacle_pass=300.0, feet_flat=-15.0, boost_over=-30.0, jump_high=-100.0,
                single_support=2.0, run_phase=2.0, feet_together=-150.0, hop_phase=2.0, hop_together=150.0,
-               hop_air_time=1.0, leap=500.0, topped=150.0, termination=-1.0)
+               hop_air_time=1.0, leap=500.0, topped=150.0, termination=-100.0)
 FAN_COST = (6.0, 0.3, 15.0, 2.0)    # fan_power multiplier walking, flying, hopping, at a box
 # Run 3: runs 1-2 stalled at 3-6 cm boxes (waiting at a box cost little, a fall lowered it), idled
 # the fans at 10-30 % when walking (cost 2.0) and skimmed rather than bounded on the moon run.
@@ -93,6 +93,10 @@ FAN_COST = (6.0, 0.3, 15.0, 2.0)    # fan_power multiplier walking, flying, hopp
 # started on, even puddles), so walk-in boxes were far taller than it could climb. Now only a pass
 # after climbing onto the box itself raises it, and boxes are 30-100 % (not 50-100 %) of the level.
 # Puddles: from 0.4 m before a puddle to past it the fans cost a third (the boost cap still holds).
+# Run 8c (from 8b at 200 M): 8b climbed 10 cm boxes but ran into every puddle with ordinary strides.
+# The discount was 0.97 per 12 ms step, a ~0.4 s horizon: a splash cost only the next 0.4 s of
+# reward and a take-off had to pay off within 0.4 s. Now 0.99 (~1.2 s) and a fall costs 100x more
+# (-1.2 per fall, about ten steps of full reward).
 CMD_ACCEL, H_RATE, L_RATE = 0.5, 0.4, 1.0   # command easing: m/s^2, rad/s^2; m/s (height); 1/s (lightness)
 SERVO_SPEED = 10.8                  # rad/s, XL330 no-load speed
 SPOOL_TAU = 0.06                    # s, fan spool-up / down time constant (EDF ~0.05-0.1 s)

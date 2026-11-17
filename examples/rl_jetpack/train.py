@@ -30,6 +30,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--steps", type=int, default=150_000_000)
 ap.add_argument("--envs", type=int, default=8192)
 ap.add_argument("--smoke", action="store_true")
+ap.add_argument("--gamma", type=float, default=0.99, help="discount per 12 ms step (0.97 = ~0.4 s horizon, 0.99 = ~1.2 s)")
 ap.add_argument("--s3", default=None, help="s3://bucket/prefix for resumable checkpoints (one per evaluation)")
 ap.add_argument("--init", default=None, help="s3://.../ckpt.pkl to warm-start from when there is no checkpoint to resume")
 a = ap.parse_args()
@@ -132,7 +133,7 @@ make_networks = functools.partial(ppo_networks.make_ppo_networks, policy_hidden_
 make_policy, params, _ = ppo.train(
     environment=env, num_timesteps=REMAINING, num_evals=4 if a.smoke else max(2, round(25 * REMAINING / a.steps)), episode_length=EPISODE,
     normalize_observations=True, action_repeat=1, unroll_length=20, num_minibatches=4 if a.smoke else 32,
-    num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=a.envs,
+    num_updates_per_batch=4, discounting=a.gamma, learning_rate=3e-4, entropy_cost=1e-2, num_envs=a.envs,
     batch_size=16 if a.smoke else 256, max_grad_norm=1.0, network_factory=make_networks, seed=0,
     progress_fn=progress, policy_params_fn=snapshot, restore_params=RESTORE, restore_value_fn=RESTORE is not None, log_training_metrics=True, training_metrics_steps=5_000_000, num_eval_envs=8 if a.smoke else 128)
 
