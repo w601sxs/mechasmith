@@ -168,3 +168,54 @@ This run was preempted at 1.38 B steps and resumed from that checkpoint.
 Next: pay the leap from the usual stride length (or for the share of the puddle cleared), so a
 slightly longer stride is already worth something; and let a box episode start next to the box
 with a take-off command, so taking off at an edge is practised.
+
+## Run 8: the showreel course (three restarts, ~4 GPU hours)
+
+![run 8: climbs a 10 cm box, leaps a 40 cm puddle, hops, stops at a 40 cm box and flies over it, lands, moon run](media/run8_reel.gif)
+
+`python course.py policy.b64 --out reel.gif` runs one course: walk on to a low box, run at a
+puddle, hop, walk to a tall box, stop at its edge, take off, fly over, land, moon run, walk. The
+course steers the duck back to its line with the turn-rate command (as a pilot would; it drifts
+1-2 m sideways while hopping otherwise). `scorecard.py` runs 13 fixed tests from 3 start seeds
+each, and training now reports it at every evaluation:
+
+| test | run 7 | run 8 (375 M) | run 8c, 500 M (the reel) | run 8c, final |
+|---|---|---|---|---|
+| walk in to a 10 cm box | 0/3 | 0/3 | 3/3 | 3/3 |
+| walk in to 20, 30, 45 cm boxes | 0/3 | 0/3 | 0/3 | 0/3 |
+| walk on from 15 cm before a 20 cm box | 0/3 | 0/3 | 0/3 | 0/3 |
+| take off from the edge of a 30 / 50 cm box | 3/3, 0/3 | 3/3, 3/3 | 3/3, 3/3 | 3/3, 3/3 |
+| walk off a 20 / 35 cm box | 3/3, 3/3 | 3/3, 3/3 | 3/3, 3/3 | 3/3, 3/3 |
+| run at 10, 20, 30, 45 cm puddles | 0/3 each | 0/3 each | 3/3 each | 3/3 each |
+
+Run 7's 10 cm climb (above) turned out to depend on the start: from other starting poses it
+stops at the edge (so the scorecard uses 3 seeds).
+
+What changed, in three restarts (each warm-started from the last checkpoint):
+- **Run 8** (from run 7): boxes up to 60 cm, with the boost cap lifted and fans at a third of the
+  cost from 0.45 m before a box; a bonus for both feet on top; flight holds its height above the
+  highest ground up to 0.35 m ahead (so it climbs before a tall box); box episodes that start at
+  the near edge (walk on, or take off) or on top (walk off); a leap reward from 6 cm, not 15; and
+  a new obstacle of the same kind appears ahead once past one. Stopped at 375 M: every walk-in box
+  failed, toes against its face. **Bug:** any pass raised the box height, including flights on
+  command, walking off a box it was started on, and puddles, so walk-in boxes were far taller
+  than it could climb.
+- **Run 8b**: the box height rises only after a pass that included climbing onto the box; boxes
+  30-100 % of the level; fans cheaper near puddles too. It climbed 10 cm boxes again but still
+  ran into every puddle with ordinary strides.
+- **Run 8c**: **the discount was the problem.** 0.97 per 12 ms step is a ~0.4 s horizon: a splash
+  cost only the next 0.4 s of reward, and a take-off had to pay within 0.4 s. At 0.99 (~1.2 s) and
+  with falls costing 100x more, it cleared every test puddle within 50 M steps: a real leap. On
+  the 45 cm puddle it pushes off ~10 cm before the edge, boosts both fans to ~80 % for 0.25 s
+  (inside the 0.4 s cap), rises 9 cm, coasts with the fans at 5-14 % and lands running past
+  the far edge, ~0.8 m in 0.58 s.
+
+Not done:
+- **Self-chosen climbing above ~12 cm**: told only to walk, it still stops at a 20 cm box. The
+  training box level rose late in run 8c, but mostly from commanded take-offs that land on top.
+  The course flies over the tall box on command instead.
+- **Hop got worse late in run 8c**: at 1.2 B steps hopping on command bounds at ~3 m/s (0.25
+  commanded) and drifts, and one of three courses fell while hopping; the reel uses the 500 M
+  snapshot, which completes the course from all 3 start seeds.
+- Sensing is still ideal (the obstacle's edges and the "water" flag come from the simulator);
+  see the camera plan in the session notes before any hardware run.
