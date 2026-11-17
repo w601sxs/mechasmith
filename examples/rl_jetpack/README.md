@@ -141,3 +141,54 @@ Footfalls over 4 s (`build/rl_tools/gait.py`):
 Next run: test falls against the ground under the feet, not under the trunk; give the puddle a
 leap-shaped reward (distance covered per airborne phase, or a puddle curriculum starting at a
 few cm) instead of leaving the run-up to discover it; and a fan cost on hopping.
+
+## Run 7: fall test from the feet, leap reward, hop fan cost (1.5 B steps, ~175 minutes on one H100)
+
+![run 7: walk over a 10 cm box, hop, moon run, take off, fly, hover, land, walk](media/run7_box10_course.gif)
+
+Three changes from run 6's notes:
+- **Fall test:** the trunk height is measured above the lower of the ground under the trunk and the ground under the soles.
+- **Leap reward:** puddle episodes pay for distance flown beyond 15 cm per landing (weight 300), and the puddle curriculum starts at 5 cm.
+- **Hop fan cost:** fan power costs 15× more while hopping.
+
+The job was preempted once, at 1.38 B steps, and resumed from its snapshot.
+
+| command | touchdowns | of which two-footed | one foot down | both | none | fans (run 6) |
+|---|---|---|---|---|---|---|
+| walk 0.2 m/s | 13 | 0 | 86 % | 14 % | 0 % | 5 % (7 %) |
+| run 0.8 m/s | 12 | 0 | 56 % | 0 % | 44 % | 30 % (30 %) |
+| moon run 0.7 m/s | 11 | 0 | 44 % | 0 % | 56 % | 41 % (41 %) |
+| hop 0.25 m/s | 16 | 16 | 4 % | 38 % | 58 % | 26 % (47 %) |
+| hop + moon 0.7 m/s | 23 | 21 | 4 % | 10 % | 86 % | 48 % (48 %) |
+
+- **10 cm box: fixed.** With the fall test fixed, it walks up onto the 10 cm box and on past it. The whole course runs without a fall: walk over the box, hop, moon run, take off, fly 2 m, hover, land, walk. Run 6 "fell" at the box edge.
+- **15 cm box: not yet.** It stops at the box edge (x = 0.57 m), and taking off from there with the box against its feet ends in a fall.
+- **Hopping fans: down from 47 % to 26 %** under the new cost. It is still a clean two-footed hop.
+- **Puddles: still lost.** The leap reward did not produce a leap. The longest airborne stretch is still 0.14 s (10 cm), so it clears a 6 cm puddle and steps into every one from 10 cm up. The puddle curriculum barely moved from its 5 cm start (plevel ≈ 0.06). The fans peak at ~60 % near the puddle, but that thrust holds the duck up rather than throwing it forward. A run-up at 0.52 m/s with a 10 cm hop cannot carry it across.
+
+## Run 7: the box fix, a leap reward, resumable training (1.5 B steps, ~175 minutes on one H100)
+
+![run 7: told only to walk, it boosts onto a 10 cm box, walks across and steps down](media/run7_box_climb.gif)
+
+Changed: falls are measured from the lowest ground under the trunk or either sole (run 6's bug,
+above); each landing in a puddle episode pays for the distance flown beyond 15 cm; puddles start
+at 5 cm; hopping pays 2.5x the walking fan cost. Training now saves (normaliser, policy, value)
+to S3 at every evaluation and a restarted job resumes from there (`run_job.sh STEPS ENVS s3://...`).
+This run was preempted at 1.38 B steps and resumed from that checkpoint.
+
+- **Boxes: it climbs by itself.** Told only to walk at 0.25 m/s, it walks up to a 10 cm box,
+  boosts both fans to 42-50 % for one step up, walks across the top and steps down, then does the
+  rest of the course. The curriculum reached 10-15 cm boxes (6-11 cm in runs 4 and 6). On 15 and
+  20 cm boxes it still stops at the edge, and taking off from there it catches the box and falls.
+- **Hop on command, cheaper**: 16 of 16 landings two-footed at 0.25 m/s with the fans at 26 %
+  (47 % in run 6); 21 of 23 hopping at moon lightness. Walking and running still alternate feet;
+  walking fans at 5 %.
+- **Puddles: still no leap.** It clears 6 cm, and steps into 10 cm and longer: its longest
+  flight near the water is 0.14 s (10 cm), its ordinary running stride. The leap reward only pays
+  beyond 15 cm, so nothing pays for a stride a little longer than usual and there is no path from
+  running to leaping; the puddle curriculum stayed at 5-7 cm.
+- The flat course (walk, hop, moon run, take off, fly 2 m, hover, land, walk) runs without a fall.
+
+Next: pay the leap from the usual stride length (or for the share of the puddle cleared), so a
+slightly longer stride is already worth something; and let a box episode start next to the box
+with a take-off command, so taking off at an edge is practised.
