@@ -1,11 +1,12 @@
 """Draw an instrument HUD over rendered frames of a recorded jet-pack run.
 
-usage: python hud.py run.npz FRAMES_DIR OUT_DIR [--jobs 8]
+usage: python hud.py run.npz FRAMES_DIR OUT_DIR [--pip POV_DIR] [--jobs 8]
 
 run.npz is the recording (`fly.py --record` / `rl_jetpack/play.py --record`); FRAMES_DIR holds
 the rendered frames (blender/render.py's OUT/frames/fNNNN.png, one per recorded frame). Writes
 OUT_DIR/fNNNN.png with a slim instrument dock under the scene (or over its bottom edge with
---overlay). Left to right:
+--overlay). With --pip OUT/pov (blender/pov.py), the head camera's view is inset top right.
+Dock, left to right:
 
   mode      the segment being flown, on a course timeline with a playhead
   thrust    fan thrust bars (hover line, one-second peak marker) and each nacelle's thrust vector
@@ -259,18 +260,42 @@ def draw_dock(T, t, W, overlay):
     return bg.resize((W, H), Image.LANCZOS)
 
 
-_T, _OVERLAY = None, False
+def draw_pip(base, pip, frac=0.3, margin=0.016):
+    """the head camera's view, inset in the top-right corner of the frame, with a HEAD CAM tag."""
+    W, H = base.size
+    w = int(W * frac)
+    h = round(w * pip.height / pip.width)
+    m = int(W * margin)
+    k = SS
+    lay = Image.new("RGBA", ((w + 4) * k, (h + 4) * k), (0, 0, 0, 0))
+    mask = Image.new("L", lay.size, 0)
+    ImageDraw.Draw(mask).rounded_rectangle((2 * k, 2 * k, (w + 2) * k, (h + 2) * k), radius=8 * k, fill=255)
+    lay.paste(pip.convert("RGBA").resize(lay.size, Image.LANCZOS), (0, 0), mask)
+    dr = ImageDraw.Draw(lay)
+    dr.rounded_rectangle((k, k, (w + 3) * k, (h + 3) * k), radius=9 * k, outline=INK + (210,), width=2 * k)
+    f = font(10, k, bold=True)
+    tag = "HEAD CAM"
+    tw = dr.textlength(tag, font=f) / k
+    dr.rounded_rectangle((8 * k, 8 * k, (8 + 20 + tw) * k, 26 * k), radius=5 * k, fill=DOCK_BG + (200,))
+    dr.ellipse((14 * k, 13.5 * k, 21 * k, 20.5 * k), fill=(255, 72, 72, 255))
+    dr.text((25 * k, 17 * k), tag, font=f, fill=INK, anchor="lm")
+    base.alpha_composite(lay.resize((w + 4, h + 4), Image.LANCZOS), (W - w - m - 2, m - 2))
 
 
-def _init(T, overlay):
-    global _T, _OVERLAY
-    _T, _OVERLAY = T, overlay
+_T, _OVERLAY, _PIP = None, False, None
+
+
+def _init(T, overlay, pip=None):
+    global _T, _OVERLAY, _PIP
+    _T, _OVERLAY, _PIP = T, overlay, pip
 
 
 def _frame(args):
     t, src, dst = args
     base = Image.open(src).convert("RGBA")
     W, H = base.size
+    if _PIP is not None and (_PIP / src.name).exists():
+        draw_pip(base, Image.open(_PIP / src.name))
     dock = draw_dock(_T, t, W, _OVERLAY)
     if _OVERLAY:                                   # over the bottom of the frame
         base.alpha_composite(dock, (0, H - dock.height))
@@ -290,6 +315,8 @@ if __name__ == "__main__":
     ap.add_argument("out", type=Path)
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--overlay", action="store_true", help="draw the dock over the bottom of the frame, not below it")
+    ap.add_argument("--pip", type=Path, default=None,
+                    help="frames from blender/pov.py (same names) to inset top right: the head camera's view")
     ap.add_argument("--only", type=int, nargs="*", default=None, help="just these frame numbers (1-based)")
     a = ap.parse_args()
     T = analyse(a.run)
@@ -301,7 +328,7 @@ if __name__ == "__main__":
             continue
         t = min(round(i * (T["F"] - 1) / max(len(files) - 1, 1)), T["F"] - 1)
         jobs.append((t, f, a.out / f.name))
-    with Pool(a.jobs, initializer=_init, initargs=(T, a.overlay)) as p:
+    with Pool(a.jobs, initializer=_init, initargs=(T, a.overlay, a.pip)) as p:
         for k, _ in enumerate(p.imap_unordered(_frame, jobs, chunksize=8)):
             if k % 100 == 0:
                 print(f"hud {k}/{len(jobs)}", flush=True)

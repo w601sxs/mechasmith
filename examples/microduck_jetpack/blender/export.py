@@ -56,13 +56,18 @@ for g in range(m.ngeom):
     ids.append(g)
 
 fans = [m.actuator_trnid[i, 0] for i in range(m.nu) if int(m.actuator_trntype[i]) == int(mujoco.mjtTrn.mjTRN_SITE)]
+eye_site = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, "head_camera")   # the lens in the head
 F = len(rec["qpos"])
 pose = np.zeros((F, len(ids), 7))
 noz = np.zeros((F, len(fans), 7))
+eye = np.zeros((F, 7))                  # head camera: position, quat (x forward, z up)
 quat = np.zeros(4)
 for t in range(F):
     d.qpos[:] = rec["qpos"][t]
     mujoco.mj_forward(m, d)
+    if eye_site >= 0:
+        mujoco.mju_mat2Quat(quat, d.site_xmat[eye_site])
+        eye[t] = np.r_[d.site_xpos[eye_site], quat]
     for j, g in enumerate(ids):
         mujoco.mju_mat2Quat(quat, d.geom_xmat[g])
         pose[t, j] = np.r_[d.geom_xpos[g], quat]
@@ -71,6 +76,8 @@ for t in range(F):
         noz[t, j] = np.r_[d.site_xpos[s] - axis * EXIT, axis, rec["throttle"][t][j]]
 np.save(a.out / "pose.npy", pose)
 np.save(a.out / "nozzles.npy", noz)
+if eye_site >= 0:
+    np.save(a.out / "eye.npy", eye)
 # obstacles: ["box", centre x, top] / ["pud", centre x, half length] (course.py --record), or --box/--puddle
 obstacles = json.loads(str(rec["obstacles"])) if "obstacles" in rec.files else []
 if a.box:
