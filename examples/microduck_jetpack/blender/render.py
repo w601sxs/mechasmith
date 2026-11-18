@@ -41,6 +41,8 @@ ap.add_argument("--adaptive", action="store_true",
 ap.add_argument("--orbit", action="store_true",
                 help="turntable: circle the duck once (eased), then push in slowly, instead of following it")
 ap.add_argument("--glow", action="store_true", help="the nozzles glow with throttle, dull orange to white hot")
+ap.add_argument("--buoyancy", type=float, default=0.0,
+                help="heat buoyancy (Mantaflow beta); 0.4 makes slow exhaust rise like hot gas, which a fan's isn't")
 ap.add_argument("--skip-bake", action="store_true")
 a = ap.parse_args(argv)
 a.out = a.out.resolve()
@@ -211,7 +213,7 @@ ds.resolution_max = a.res
 for side in ("front", "back", "left", "right", "top"):
     setattr(ds, f"use_collision_border_{side}", False)      # smoke leaves the box ...
 ds.use_collision_border_bottom = True                       # ... but the floor is a wall
-ds.alpha, ds.beta = 0.0, 0.4             # no density buoyancy; warm exhaust rises once it slows
+ds.alpha, ds.beta = 0.0, a.buoyancy       # fan exhaust is ambient air: by default nothing makes it rise
 ds.vorticity = 0.15
 ds.use_dissolve_smoke = True
 ds.dissolve_speed = a.dissolve
@@ -260,7 +262,7 @@ for k in range(noz.shape[1]):
     fl = fmod.flow_settings
     fl.flow_type, fl.flow_behavior, fl.flow_source = "SMOKE", "INFLOW", "MESH"
     fl.use_plane_init = True
-    fl.surface_distance = 2.0
+    fl.surface_distance = 0.6          # a thin layer at the exit: nothing seeded up the duct
     fl.use_initial_velocity = True
     fl.smoke_color = (0.9, 0.9, 0.92)
     fl.temperature = 1.0
@@ -272,7 +274,7 @@ for k in range(noz.shape[1]):
         e.keyframe_insert("location", frame=t + 1)
         e.keyframe_insert("rotation_quaternion", frame=t + 1)
         fl.velocity_normal = a.vmax * u
-        fl.density = 1.0 if u > 0.02 else 0.0
+        fl.density = min(1.0, max(u - 0.03, 0.0) / 0.25)     # weak flow, thin smoke
         fl.keyframe_insert("velocity_normal", frame=t + 1)
         fl.keyframe_insert("density", frame=t + 1)
 
