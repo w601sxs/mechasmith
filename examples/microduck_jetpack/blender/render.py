@@ -19,7 +19,7 @@ from pathlib import Path
 import bpy
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from camera import keyframe_camera  # noqa: E402
+from camera import keyframe_camera, keyframe_orbit  # noqa: E402
 import numpy as np
 from mathutils import Quaternion, Vector
 
@@ -38,6 +38,9 @@ ap.add_argument("--vmax", type=float, default=9.0, help="exhaust speed at full t
 ap.add_argument("--dissolve", type=int, default=30, help="frames for smoke to dissolve (lower = less haze)")
 ap.add_argument("--adaptive", action="store_true",
                 help="adaptive domain: only simulate where the smoke is (for long courses; set --res high)")
+ap.add_argument("--orbit", action="store_true",
+                help="turntable: circle the duck once (eased), then push in slowly, instead of following it")
+ap.add_argument("--glow", action="store_true", help="the nozzles glow with throttle, dull orange to white hot")
 ap.add_argument("--skip-bake", action="store_true")
 a = ap.parse_args(argv)
 a.out = a.out.resolve()
@@ -273,6 +276,41 @@ for k in range(noz.shape[1]):
         fl.keyframe_insert("velocity_normal", frame=t + 1)
         fl.keyframe_insert("density", frame=t + 1)
 
+# ---- nozzle glow (--glow): an emissive disc just inside each exit, brighter and whiter with throttle
+if a.glow:
+    for k in range(noz.shape[1]):
+        bpy.ops.mesh.primitive_circle_add(vertices=32, radius=0.025, fill_type="NGON")
+        g = bpy.context.object
+        g.name = f"glow{k}"
+        g.rotation_mode = "QUATERNION"
+        gm = bpy.data.materials.new(f"glow{k}")
+        gm.use_nodes = True
+        gn = gm.node_tree.nodes
+        gn.remove(gn["Principled BSDF"])
+        em = gn.new("ShaderNodeEmission")
+        gm.node_tree.links.new(em.outputs["Emission"], gn["Material Output"].inputs["Surface"])
+        g.data.materials.append(gm)
+        lamp = bpy.data.objects.new(f"glow_light{k}", bpy.data.lights.new(f"glow_light{k}", "POINT"))
+        lamp.data.shadow_soft_size = 0.012
+        sc.collection.objects.link(lamp)           # lights the exhaust smoke and the floor under it
+        for t in range(f0 - 1, f1):
+            p, axis, u = Vector(noz[t, k, :3]), Vector(noz[t, k, 3:6]), float(noz[t, k, 6])
+            g.location = p + axis * 0.006                  # upstream of the exit, inside the duct
+            g.rotation_quaternion = Vector((0, 0, 1)).rotation_difference(-axis)
+            g.keyframe_insert("location", frame=t + 1)
+            g.keyframe_insert("rotation_quaternion", frame=t + 1)
+            hot = min(max(u, 0.0), 1.0)
+            em.inputs["Color"].default_value = (1.0, 0.35 + 0.6 * hot, 0.08 + 0.85 * hot ** 2, 1)
+            em.inputs["Strength"].default_value = 60 * hot ** 1.5
+            em.inputs["Color"].keyframe_insert("default_value", frame=t + 1)
+            em.inputs["Strength"].keyframe_insert("default_value", frame=t + 1)
+            lamp.location = p - axis * 0.012
+            lamp.data.color = em.inputs["Color"].default_value[:3]
+            lamp.data.energy = 12 * hot ** 1.5
+            lamp.keyframe_insert("location", frame=t + 1)
+            lamp.data.keyframe_insert("color", frame=t + 1)
+            lamp.data.keyframe_insert("energy", frame=t + 1)
+
 # ---- light, world, camera
 world = bpy.data.worlds.new("sky")
 sc.world = world
@@ -291,7 +329,10 @@ cam.data.angle = math.radians(42)
 cam.data.clip_start = 0.02
 sc.collection.objects.link(cam)
 sc.camera = cam
-keyframe_camera(cam, pose, obstacles, f0, f1, meta["fps"])
+if a.orbit:
+    keyframe_orbit(cam, pose, f0, f1)
+else:
+    keyframe_camera(cam, pose, obstacles, f0, f1, meta["fps"])
 
 # ---- render settings
 r = sc.render

@@ -87,3 +87,25 @@ def keyframe_camera(cam, pose, obstacles, f0, f1, fps):
         cam.rotation_quaternion = Vector(fwd).to_track_quat("-Z", "Y")
         cam.keyframe_insert("location", frame=t)
         cam.keyframe_insert("rotation_quaternion", frame=t)
+
+
+def keyframe_orbit(cam, pose, f0, f1, dist=(0.78, 0.5), el=(10.0, 3.0), az0=150.0, turn=0.7):
+    """turntable: one eased lap round the duck over the first `turn` of the clip (starting from
+    the front three-quarter view), then a slow drift and a low push-in for the rest, down near
+    the nozzles."""
+    from mathutils import Vector
+    centre = pose[f0 - 1:f1, :, :3].reshape(-1, 3).mean(axis=0)
+    tgt = np.array([centre[0], centre[1], centre[2] + 0.01])
+    cam.rotation_mode = "QUATERNION"
+    n = f1 - f0
+    for t in range(f0, f1 + 1):
+        u = (t - f0) / max(n, 1)
+        x = min(u / turn, 1.0)
+        lap = x * x * (3 - 2 * x)
+        y = max(u - turn, 0) / (1 - turn)
+        push = y * y * (3 - 2 * y)
+        fwd = _fwd(az0 + 360 * lap + 25 * push, el[0] + (el[1] - el[0]) * push)
+        cam.location = Vector(tgt - (dist[0] + (dist[1] - dist[0]) * push) * fwd)
+        cam.rotation_quaternion = Vector(fwd).to_track_quat("-Z", "Y")
+        cam.keyframe_insert("location", frame=t)
+        cam.keyframe_insert("rotation_quaternion", frame=t)

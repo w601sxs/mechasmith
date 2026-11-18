@@ -90,6 +90,14 @@ blender -b OUT/scene.blend -P examples/microduck_jetpack/blender/pov.py -- EXPOR
 python examples/microduck_jetpack/blender/hud.py run.npz OUT/frames OUT/hud --pip OUT/pov
 ```
 
+Turntable: `turntable.py` scripts a 10 s "getting ready" clip. The duck looks about, sweeps each nacelle, blips the fans, crouches, then spools up and strains against the floor. The poses are set by hand, not simulated, and the soles are kept flat on the floor. Render it with `--orbit` for one eased lap followed by a slow push-in, and `--glow` for nozzles that run from dull orange to white hot with throttle:
+
+```bash
+uv run python examples/microduck_jetpack/turntable.py build/turntable.npz
+uv run python examples/microduck_jetpack/blender/export.py build/turntable.npz build/blender_tt
+blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_tt build/blender_tt_render --orbit --glow --size 720 720 --res 192
+```
+
 ### Instrument HUD
 
 `blender/hud.py run.npz OUT/frames OUT/hud` adds a slim instrument dock under the scene, so the scene itself is left uncovered. Pass `--overlay` to lay the dock over the bottom edge of the frame instead. Left to right, the dock shows:
