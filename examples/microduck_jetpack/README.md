@@ -98,14 +98,6 @@ uv run python examples/microduck_jetpack/blender/export.py build/turntable.npz b
 blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_tt build/blender_tt_render --orbit --glow --size 720 720 --res 192
 ```
 
-Turntable: `turntable.py` writes a scripted 10 s clip (not simulated): the duck looks about, sweeps each nacelle, blips the fans, crouches and spools up to ~95 %, its soles held flat on the floor. `render.py --orbit` circles it once and then pushes in low; `--glow` lights each nozzle from dull orange to white hot, with a light in the exhaust that shows on the smoke and the floor.
-
-```bash
-uv run python examples/microduck_jetpack/turntable.py build/turntable.npz
-uv run python examples/microduck_jetpack/blender/export.py build/turntable.npz build/blender_tt
-blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_tt build/blender_tt_render --orbit --glow --size 720 720 --res 192
-```
-
 ### Instrument HUD
 
 `blender/hud.py run.npz OUT/frames OUT/hud` adds a slim instrument dock under the scene, so the scene itself is left uncovered. Pass `--overlay` to lay the dock over the bottom edge of the frame instead. Left to right, the dock shows:
