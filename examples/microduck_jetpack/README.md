@@ -83,7 +83,7 @@ haze clears. The 16.7 s flight at grid 160 bakes in under 3 minutes and renders 
 
 Obstacles carry through to Blender. `rl_jetpack/course.py --record` saves its list of boxes and puddles, and `export.py` passes it on; `--box` and `--puddle` add one more for recordings that don't save theirs. In the render, boxes are solid fluid effectors, so the exhaust hits them and spreads over the top. Puddles are glossy, faintly rippled water slabs. The chase camera (`blender/camera.py`) swings round the duck, and climbs only if it has to, whenever a box would block the view. It starts the move a second early and eases it, so the camera glides instead of jumping.
 
-Head camera: the duck has a small camera module behind the lens in its face, at the `head_camera` site. The policy doesn't use it (it walks and flies on joint encoders and the IMU), but you can render what it would see. `export.py` saves the site's pose per frame as `eye.npy`. `blender/pov.py` adds a camera there that nods, turns and rolls with the head, then renders `OUT/pov/` from the scene you have already baked, so the smoke and obstacles match. It takes about 1 s per frame at 480×360. The design gives no lens spec, so the field of view is set by `--fov`, which defaults to 100°. Pass `hud.py ... --pip OUT/pov` to inset that view in the top-right corner:
+Head camera: the duck has a small camera module behind the lens in its face, at the `head_camera` site. No image from it reaches the policy: the obstacle ahead and the "it is water" flag the policy sees are read from the simulator and stand in for what this camera would tell it (see `rl_jetpack/README.md`). You can render what it would see. `export.py` saves the site's pose per frame as `eye.npy`. `blender/pov.py` adds a camera there that nods, turns and rolls with the head, then renders `OUT/pov/` from the scene you have already baked, so the smoke and obstacles match. It takes about 1 s per frame at 480×360. The design gives no lens spec, so the field of view is set by `--fov`, which defaults to 100°. Pass `hud.py ... --pip OUT/pov` to inset that view in the top-right corner:
 
 ```bash
 blender -b OUT/scene.blend -P examples/microduck_jetpack/blender/pov.py -- EXPORT_DIR
@@ -91,6 +91,14 @@ python examples/microduck_jetpack/blender/hud.py run.npz OUT/frames OUT/hud --pi
 ```
 
 Turntable: `turntable.py` scripts a 10 s "getting ready" clip. The duck looks about, sweeps each nacelle, blips the fans, crouches, then spools up and strains against the floor. The poses are set by hand, not simulated, and the soles are kept flat on the floor. Render it with `--orbit` for one eased lap followed by a slow push-in, and `--glow` for nozzles that run from dull orange to white hot with throttle:
+
+```bash
+uv run python examples/microduck_jetpack/turntable.py build/turntable.npz
+uv run python examples/microduck_jetpack/blender/export.py build/turntable.npz build/blender_tt
+blender -b -P examples/microduck_jetpack/blender/render.py -- build/blender_tt build/blender_tt_render --orbit --glow --size 720 720 --res 192
+```
+
+Turntable: `turntable.py` writes a scripted 10 s clip (not simulated): the duck looks about, sweeps each nacelle, blips the fans, crouches and spools up to ~95 %, its soles held flat on the floor. `render.py --orbit` circles it once and then pushes in low; `--glow` lights each nozzle from dull orange to white hot, with a light in the exhaust that shows on the smoke and the floor.
 
 ```bash
 uv run python examples/microduck_jetpack/turntable.py build/turntable.npz
