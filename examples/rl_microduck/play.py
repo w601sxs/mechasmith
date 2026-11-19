@@ -42,7 +42,7 @@ nets = ppo_networks.make_ppo_networks(env.observation_size, env.action_size,
 act = jax.jit(ppo_networks.make_inference_fn(nets)((normalizer, policy), deterministic=True))
 step, reset = jax.jit(env.step), jax.jit(env.reset)
 
-SCRIPT = [((0.0, 0.0, 0.0), 1.0), ((0.15, 0.0, 0.0), 4.0), ((0.1, 0.0, 0.6), 3.0), ((-0.08, 0.0, 0.0), 2.0),
+SCRIPT = [((0.0, 0.0, 0.0), 1.0), ((0.15, 0.0, 0.0), 4.0), ((0.3, 0.0, 0.0), 4.0), ((0.1, 0.0, 0.6), 3.0), ((-0.08, 0.0, 0.0), 2.0),
           ((0.0, 0.08, 0.0), 2.0), ((0.0, 0.0, 0.0), 1.0)]
 state = reset(jax.random.PRNGKey(0))
 qpos, log = [], []
