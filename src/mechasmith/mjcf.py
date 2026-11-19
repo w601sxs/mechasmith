@@ -285,17 +285,99 @@ def lowest_point_mm(robot: Robot) -> float:
     return min(p.shape.bounding_box().min.Z for l in robot.links.values() for p in l.parts)
 
 
+def vectoring(model):
+    """Rotor actuators, and the position-actuated joints that carry rotors (tilting nacelles,
+    thrust vectoring): (rotor actuator ids, vectoring actuator ids)."""
+    rot = [i for i in range(model.nu) if model.actuator_trntype[i] == mujoco.mjtTrn.mjTRN_SITE]
+    bodies = {int(model.site_bodyid[model.actuator_trnid[i, 0]]) for i in rot}
+    vec = []
+    for i in range(model.nu):
+        if model.actuator_trntype[i] != mujoco.mjtTrn.mjTRN_JOINT or model.actuator_biastype[i] == 0:
+            continue
+        jb = int(model.jnt_bodyid[model.actuator_trnid[i, 0]])
+        for b in bodies:
+            while b not in (0, jb):
+                b = int(model.body_parentid[b])
+            if b == jb:
+                vec.append(i)
+                break
+    return rot, vec
+
+
+def body_wrench(model, data, ctrl):
+    """[thrust, roll, pitch, yaw] about the centre of mass (root frame) from the rotor thrusts
+    in `ctrl`, with each vectoring joint at its position target (the servo has arrived).
+    Moves those joints in `data`."""
+    import numpy as np
+    rot, vec = vectoring(model)
+    for i in vec:
+        data.qpos[model.jnt_qposadr[model.actuator_trnid[i, 0]]] = ctrl[i]
+    mujoco.mj_kinematics(model, data)
+    mujoco.mj_comPos(model, data)
+    A, _ = allocation(model, data)
+    return A @ np.asarray(ctrl)[rot]
+
+
+def hover_trim(model, pose: dict | None = None):
+    """Controls that hold the robot still in the air, with its joints at `pose`: rotor thrusts
+    and, for tilting rotors, the tilt-servo targets (thrust = weight, zero moments). Joint
+    actuators that carry no rotor hold the pose. Also returns the 4 x n Jacobian of
+    [thrust, roll, pitch, yaw] with respect to the free controls (rotors, then tilt servos)
+    there, the linear allocation a controller inverts. None if out of range.
+    Returns (qpos, ctrl, free_ids, J)."""
+    import numpy as np
+    d = mujoco.MjData(model)
+    mujoco.mj_resetData(model, d)
+    for jn, v in (pose or {}).items():
+        d.qpos[model.jnt_qposadr[model.joint(jn).id]] = v
+    rot, vec = vectoring(model)
+    if not rot:
+        return None
+    ctrl = np.zeros(model.nu)
+    for i in range(model.nu):
+        if model.actuator_trntype[i] == mujoco.mjtTrn.mjTRN_JOINT and model.actuator_biastype[i] != 0:
+            ctrl[i] = d.qpos[model.jnt_qposadr[model.actuator_trnid[i, 0]]]
+    free = rot + vec
+    W = model.body_subtreemass[1] * -model.opt.gravity[2]
+    target = np.array([W, 0.0, 0.0, 0.0])
+
+    def jac(c):
+        w0, J = body_wrench(model, d, c), np.zeros((4, len(free)))
+        for k, i in enumerate(free):
+            e = 1e-4 if i in vec else 1e-3 * max(model.actuator_ctrlrange[i, 1], 1e-3)
+            c2 = c.copy()
+            c2[i] += e
+            J[:, k] = (body_wrench(model, d, c2) - w0) / e
+        return w0, J
+
+    for _ in range(30):
+        w, J = jac(ctrl)
+        r = target - w
+        if np.linalg.norm(r) < 1e-9 * W:
+            break
+        ctrl[free] += np.linalg.lstsq(J, r, rcond=None)[0]
+    w, J = jac(ctrl)
+    lo, hi = model.actuator_ctrlrange[:, 0], model.actuator_ctrlrange[:, 1]
+    if np.linalg.norm(target - w) > 1e-6 * W or np.any(ctrl[free] < lo[free] - 1e-9) or \
+            np.any(ctrl[free] > hi[free] + 1e-9):
+        return None
+    body_wrench(model, d, ctrl)
+    return d.qpos.copy(), ctrl, free, J
+
+
 def _with_keys(spec, robot: Robot, keyframes: dict | None):
     """Compile `spec`, adding the hover key (rotorcraft) and one key per keyframe pose."""
+    import numpy as np
     model = spec.compile()  # raises with a clear message if the model is invalid
+    has_joint_acts = bool(np.any(model.actuator_trntype == mujoco.mjtTrn.mjTRN_JOINT))
     if robot.rotors and robot.floating:
-        u = hover_thrusts(model)
-        if u is not None:
+        trim = hover_trim(model, (keyframes or {}).get("home"))
+        if trim is not None:
             key = spec.add_key(name="hover")
-            key.qpos = list(model.qpos0)
-            key.ctrl = list(u)
+            key.qpos = list(trim[0])
+            key.ctrl = list(trim[1])
             model = spec.compile()
-    if keyframes and not robot.rotors and not model.neq:
+    if keyframes and (not robot.rotors or has_joint_acts) and not model.neq:
         from .sim import place_on_floor
         d = mujoco.MjData(model)
         for name, pose in keyframes.items():
@@ -307,6 +389,9 @@ def _with_keys(spec, robot: Robot, keyframes: dict | None):
                     d.qpos[model.jnt_qposadr[model.joint(jn).id]] = v
             ctrl = []
             for i in range(model.nu):
+                if model.actuator_trntype[i] != mujoco.mjtTrn.mjTRN_JOINT:
+                    ctrl.append(0.0)           # rotors off on the ground
+                    continue
                 jn = model.joint(model.actuator_trnid[i, 0]).name
                 ctrl.append(float(d.qpos[model.jnt_qposadr[model.joint(jn).id]])
                             if model.actuator_biastype[i] != 0 else 0.0)

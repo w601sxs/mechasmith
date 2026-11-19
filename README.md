@@ -221,3 +221,10 @@ loads (and in MJX, when JAX is installed).
   primitive shapes, a clean JSON stdout). Round 2: all 29 axes on the Menagerie model's, no overlaps,
   and the stand test matches the reference's (0.0 vs -0.1 degrees, 0.7 mm settle each).
 - Next: Hello Robot Stretch 3 (the leader arm), one CLI, tests, packaging.
+- Microduck jet pack (`designs/microduck_jetpack.py`, `examples/microduck_jetpack/`): the Microduck
+  with a backpack and two tilting 70 mm ducted fans on XL330 servos, flown as a tilt-birotor by a
+  hand-written controller (take-off, hover, forward flight, turn, landing; GIF in the example).
+  1248 g, thrust-to-weight 1.96 with 12 N fans (an estimate; ~1 min on 1300 mAh). It drove thrust
+  vectoring in the library: `mjcf.hover_trim` solves rotor thrusts and the tilt-servo targets
+  together and gives the allocation Jacobian, used by the `hover` key, the keyframes of rotorcraft
+  with joints and the build's closed-loop hover check. Assumptions and gaps in the example's README.
