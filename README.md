@@ -1,4 +1,13 @@
-# mechasmith
+<h1 align="center">
+  <img src="https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/banner.png" alt="mechasmith: Robots as Python code, ready to simulate." width="100%">
+</h1>
+
+<p align="center">
+  <a href="https://pypi.org/project/mechasmith/"><img src="https://img.shields.io/pypi/v/mechasmith" alt="PyPI version"></a>
+  <a href="https://github.com/w601sxs/mechasmith/actions/workflows/ci.yml"><img src="https://github.com/w601sxs/mechasmith/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.12%2B-blue" alt="Python 3.12+">
+  <a href="https://github.com/w601sxs/mechasmith/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
 
 **Robots as Python code, ready to simulate.** You write a robot as one Python file: parts, the
 servos or motors between them, and which part connects to which. `mechasmith build` turns it into a
