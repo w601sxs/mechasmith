@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  designs:
+    name: build ${{ matrix.design }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        design: [so101, robotiq_2f85, crazyflie2, duck_leg, microduck, microduck_jetpack, go2, g1]
+    env:
+      MUJOCO_GL: osmesa          # headless rendering for views.png
+      PYOPENGL_PLATFORM: osmesa
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: System libraries (OpenGL for OpenCascade and MuJoCo rendering)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglu1-mesa libosmesa6 libxrender1
+      - run: uv sync --locked
+      - name: Build ${{ matrix.design }}
+        run: |
+          uv run mechasmith build ${{ matrix.design }} > report.json
+          uv run python - <<'PY'
+          import json
+          r = json.load(open("report.json"))
+          hc = r["interference"]["home_collisions"]
+          print(r["design"], r["mass"]["total_g"], "g,", len(hc), "collisions at home")
+          assert not hc, hc
+          if "hover" in r:
+              print("hover", {k: r["hover"].get(k) for k in ("hovers", "thrust_to_weight")})
+          if "arm" in r:
+              print("arm", r["arm"].get("worst_servo"))
+          if "stand" in r:
+              print("stand", {k: r["stand"].get(k) for k in ("stands", "settled_pitch_deg")})
+          PY
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv build
+      - name: Install the wheel alone and build a bundled example
+        env:
+          MUJOCO_GL: osmesa
+          PYOPENGL_PLATFORM: osmesa
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglu1-mesa libosmesa6 libxrender1
+          uv venv /tmp/clean
+          uv pip install --python /tmp/clean/bin/python dist/*.whl
+          cd /tmp && /tmp/clean/bin/mechasmith examples && /tmp/clean/bin/mechasmith build duck_leg > /dev/null
