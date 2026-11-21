@@ -14,8 +14,9 @@ The simplest RL loop on a mechasmith robot: MJX (MuJoCo on the GPU, through JAX)
        --with mujoco-mjx==3.17.0 python train.py --smoke
    ```
 3. Train on one GPU: `bash run_job.sh 150000000 8192` installs JAX/Brax/MJX into a fresh
-   virtualenv and runs `train.py` (300 M steps took 25 minutes on one H100). On Scale Train it
-   reports each step, the evaluation curve and the policy (in chunks) through `train_report`.
+   virtualenv and runs `train.py` (300 M steps took 25 minutes on one H100). On a job runner that
+   provides a `train_report` module it reports each step, the evaluation curve and the policy (in
+   chunks) through it; otherwise it prints them and writes `policy.pkl`.
 4. Watch it: join the policy chunks into one base64 file and run
    ```bash
    uv run --no-project --python 3.12 --with jax==0.7.2 --with brax==0.14.2 --with mujoco==3.17.0 \

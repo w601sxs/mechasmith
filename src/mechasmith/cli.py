@@ -1,7 +1,11 @@
 """mechasmith command line.
 
-    mechasmith describe <design.py>             parameters, ranges, poses (JSON)
-    mechasmith build <design.py> [--set k=v]    meshes, MJCF, URDF, checks, renders, viewer (JSON report)
+    mechasmith examples                         the bundled example designs
+    mechasmith copy <example> [dest]            copy an example design to edit as a starting point
+    mechasmith describe <design>                parameters, ranges, poses (JSON)
+    mechasmith build <design> [--set k=v]       meshes, MJCF, URDF, checks, renders, viewer (JSON report)
+
+<design> is a path to a design file, or the name of a bundled example (so101, microduck, ...).
 
 Output is JSON on stdout so an agent can parse it.
 """
@@ -29,9 +33,30 @@ def load_module(path: Path):
     return mod
 
 
+EXAMPLES = Path(__file__).with_name("designs")        # installed: shipped inside the package
+if not EXAMPLES.is_dir():                              # source checkout: the repo's designs/
+    EXAMPLES = Path(__file__).resolve().parents[2] / "designs"
+
+
+def examples() -> list[str]:
+    return sorted(p.stem for p in EXAMPLES.glob("*.py") if not p.stem.startswith("_"))
+
+
+def resolve(design) -> Path:
+    """A design file path, or the name of a bundled example."""
+    path = Path(design)
+    if path.exists():
+        return path
+    bundled = EXAMPLES / f"{path.stem}.py"
+    if path.suffix in ("", ".py") and path.parent == Path(".") and bundled.exists():
+        return bundled
+    raise SystemExit(f"mechasmith: no design file {design!r} and no example of that name "
+                     f"(examples: {', '.join(examples())})")
+
+
 def load_design(path) -> Design:
-    """Import a design file and return its @design object."""
-    return find_design(load_module(path))
+    """Import a design file (or bundled example by name) and return its @design object."""
+    return find_design(load_module(resolve(path)))
 
 
 def _parse_sets(pairs: list[str]) -> dict:
@@ -48,6 +73,10 @@ def _parse_sets(pairs: list[str]) -> dict:
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="mechasmith")
     sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("examples", help="list the bundled example designs")
+    cp = sub.add_parser("copy", help="copy a bundled example design to start from")
+    cp.add_argument("example")
+    cp.add_argument("dest", type=Path, nargs="?", default=None)
     dsc = sub.add_parser("describe", help="list a design's parameters, ranges and poses")
     dsc.add_argument("design", type=Path)
     b = sub.add_parser("build", help="build a design file")
@@ -61,6 +90,20 @@ def main(argv=None):
                    help="also write a training model, robot_<sim>.xml (primitive collisions, no meshes, floor)")
     args = ap.parse_args(argv)
 
+    if args.cmd == "examples":
+        print(json.dumps(examples()))
+        return
+    if args.cmd == "copy":
+        import shutil
+        src = resolve(args.example)
+        dest = args.dest or Path(src.name)
+        if dest.is_dir():
+            dest = dest / src.name
+        if dest.exists():
+            raise SystemExit(f"mechasmith: {dest} already exists")
+        shutil.copy(src, dest)
+        print(json.dumps({"copied": str(dest)}))
+        return
     if args.cmd == "describe":
         print(json.dumps(load_design(args.design).describe(), indent=2))
         return
@@ -90,7 +133,7 @@ def _build(args) -> dict:
     dz = load_design(args.design)
     overrides = _parse_sets(args.set)
     robot = dz.build(**overrides)
-    out = args.out or Path("build") / args.design.stem
+    out = args.out or Path("build") / Path(args.design).stem
     out.mkdir(parents=True, exist_ok=True)
     scene = mjcf.export(robot, out, base_height=dz.base_height, keyframes={"home": dz.home, **dz.poses},
                         sim=args.sim)
@@ -100,7 +143,7 @@ def _build(args) -> dict:
     t_export = time.time() - t0
 
     manifest = json.loads((out / "manifest.json").read_text())
-    report = {"design": str(args.design), "params": dz.resolve(**overrides).as_dict(), "out": str(out),
+    report = {"design": str(resolve(args.design)), "params": dz.resolve(**overrides).as_dict(), "out": str(out),
               "scene": str(scene), "urdf": str(urdf_path), "mass": checks.mass_report(manifest)}
     if args.sim:
         report["sim_model"] = str(out / f"robot_{args.sim}.xml")

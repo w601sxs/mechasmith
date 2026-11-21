@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Scale Train entry point: install, check the GPU, train. Each step reports its outcome (and the
-# tail of its log on failure) through train_report, so the result is readable without Datadog.
+# GPU job entry point: install, check the GPU, train. Each step reports its outcome (and the tail
+# of its log on failure) through train_report when a job runner provides it, else prints it.
 set -uo pipefail
 STEPS=${1:-150000000}
 ENVS=${2:-8192}
@@ -8,7 +8,10 @@ S3=${3:-}            # s3://bucket/prefix: resumable checkpoints
 rep() {   # rep <stage> <logfile> [ok|error]
   python3 - "$1" "$2" "${3:-ok}" <<'EOF'
 import json, sys
-from train_report import report
+try:
+    from train_report import report
+except ImportError:
+    def report(kind, payload): print(kind, json.dumps(payload)[-500:])
 stage, log, kind = sys.argv[1:4]
 try:
     text = open(log).read()[-3000:]

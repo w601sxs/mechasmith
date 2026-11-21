@@ -1,4 +1,8 @@
 build/
+dist/
 .venv/
 __pycache__/
 *.pyc
+policy.pkl
+*.b64
+MUJOCO_LOG.TXT
