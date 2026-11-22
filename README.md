@@ -139,7 +139,7 @@ under Xvfb with `MUJOCO_GL=glfw`):
 
 ```bash
 uv run python scripts/film_lineup.py build lineup.mp4             # every example, posed together, orbiting camera
-uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, then assembled
+uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, assembled, turntable
 ```
 
 ## Conventions
