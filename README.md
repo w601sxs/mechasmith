@@ -138,6 +138,7 @@ Two more film the examples (they need ffmpeg, and an OpenGL context: on a headle
 under Xvfb with `MUJOCO_GL=glfw`):
 
 ```bash
+uv run python scripts/film_title.py title.mp4                     # opening card: logo, name, pip install line
 uv run python scripts/film_lineup.py build lineup.mp4             # every example, posed together, orbiting camera
 uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, assembled, turntable
 ```
