@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 FPS, SIZE, SS = 24, 1080, 2  # SS: supersampling
-DURATION = 4.0
+DURATION = 7.0  # the last 1.2 s are overlapped by the crossfade into the next clip
 ROOT = Path(__file__).resolve().parent.parent
 LOGO = ROOT / "docs" / "media" / "logo.png"
 FONT_B = "/usr/share/fonts/opentype/inter/InterDisplay-Bold.otf"
@@ -62,22 +62,22 @@ class Card:
         img = Image.fromarray(self.bg).convert("RGBA")
         layers = []
 
-        a = ease(ramp(t, 0.0, 0.9))  # logo: fades in, grows from 88 %
+        a = ease(ramp(t, 0.0, 1.3))  # logo: fades in, grows from 88 %
         side = int(250 * SS * (0.88 + 0.12 * a))
         logo = self.logo.resize((side, side), Image.LANCZOS)
         layers.append(self.layer(lambda d, lay: lay.alpha_composite(logo, (c - side // 2, int(340 * SS) - side // 2)),
                                  a, 0))
 
-        a = ease(ramp(t, 0.45, 1.25))  # name
+        a = ease(ramp(t, 0.7, 1.9))  # name
         layers.append(self.layer(lambda d, lay: d.text((c, 590 * SS), NAME, font=self.big, fill=(245, 246, 248),
                                                        anchor="ms"), a, 18 * (1 - a)))
-        a = ease(ramp(t, 0.75, 1.55))  # tagline
+        a = ease(ramp(t, 1.1, 2.3))  # tagline
         layers.append(self.layer(lambda d, lay: d.text((c, 650 * SS), TAGLINE, font=self.mid, fill=(160, 170, 188),
                                                        anchor="ms"), a, 18 * (1 - a)))
 
-        a = ease(ramp(t, 1.25, 1.75))  # pip line: the box appears, then the command types out
-        typed = PIP[: int(len(PIP) * ramp(t, 1.6, 2.4))]
-        cursor = t < 2.4 or int((t - 2.4) * 2.4) % 2 == 0
+        a = ease(ramp(t, 1.9, 2.5))  # pip line: the box appears, then the command types out
+        typed = PIP[: int(len(PIP) * ramp(t, 2.5, 3.8))]
+        cursor = t < 3.8 or int((t - 3.8) * 2.4) % 2 == 0
 
         def pip(d, lay):
             full = "$ " + PIP
