@@ -134,6 +134,14 @@ uv run --with yourdfpy python scripts/check_urdf.py build/so101                 
 uv run python scripts/sweep_param.py designs/duck_leg.py foot_reach left_ankle 12,14,16    # one knob, many builds
 ```
 
+Two more film the examples (they need ffmpeg, and an OpenGL context: on a headless machine run them
+under Xvfb with `MUJOCO_GL=glfw`):
+
+```bash
+uv run python scripts/film_lineup.py build lineup.mp4             # every example, posed together, orbiting camera
+uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, then assembled
+```
+
 ## Conventions
 
 Millimetres; x forward, y left, z up, in one world frame at the home pose. Servo frame: +X is the
