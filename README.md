@@ -18,6 +18,11 @@ It is built to be driven by coding agents. Every command prints JSON, every desi
 declared range, and the library refuses to build a robot with a floating part. So an agent can
 change a number, rebuild and read what happened, without a human checking the CAD.
 
+<p align="center">
+  <a href="https://github.com/w601sxs/mechasmith/blob/main/mechasmith_full.mp4"><img src="https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/go2-assembly.gif" alt="A Unitree Go2 assembling itself from its parts in mechasmith" width="400"></a>
+  <br><sub>A Go2 assembling itself. Tap for the full 37 s reel. Made with <code>scripts/film_*.py</code>.</sub>
+</p>
+
 ![The bundled example robots, as built by mechasmith](https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/gallery.png)
 
 ## Install
@@ -138,8 +143,9 @@ Two more film the examples (they need ffmpeg, and an OpenGL context: on a headle
 under Xvfb with `MUJOCO_GL=glfw`):
 
 ```bash
+uv run python scripts/film_title.py title.mp4                     # opening card: logo, name, pip install line
 uv run python scripts/film_lineup.py build lineup.mp4             # every example, posed together, orbiting camera
-uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, then assembled
+uv run python scripts/film_go2_assembly.py build go2_assembly.mp4 # Go2 torso designed from code, assembled, turntable
 ```
 
 ## Conventions

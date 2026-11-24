@@ -1,6 +1,6 @@
 """Film the Go2 being made: its torso designed step by step as a hologram, with the lines of
-designs/go2.py that make it, then the other 40 parts flying in and locking into place.
-15 s, 1080x1080, 24 fps.
+designs/go2.py that make it, then the other 40 parts flying in and locking into place, and a
+half turn round the finished robot as it fades out. 25 s, 1080x1080, 24 fps.
 
 usage: python scripts/film_go2_assembly.py build go2_assembly.mp4 [--stills 1.2,8,14 stills.png] [--workers 4]
 
@@ -24,7 +24,9 @@ from mechasmith import GO_M8010_6, box, cyl, swept_link
 from mechasmith.render import _rest_on_floor
 
 FPS, SIZE, SS = 24, 1080, 2
-DURATION = 15.0
+DURATION = 25.0
+TURNTABLE = (15.0, 25.0)  # half a turn round the finished robot
+FADE_OUT = 5.0  # seconds of fade to black at the end
 FONT_M = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
 FONT_MB = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf"
 FONT_B = "/usr/share/fonts/opentype/inter/InterDisplay-Bold.otf"
@@ -318,6 +320,7 @@ class Film:
             cam = mix(wide, build_end, ease_io((t - 8.7) / 3.9))
         else:
             cam = mix(build_end, hero, ease_io((t - 12.6) / 2.4))
+            cam["azimuth"] = cam["azimuth"] + 180 * ease_io(ramp(t, *TURNTABLE))
         # a small kick each time a part locks in
         shake = np.zeros(3)
         for tl in self.landings:
@@ -372,7 +375,7 @@ def overlay(img, t):
         d.text((58, SIZE - 82), "43 parts  ·  12 joints  ·  147 lines of Python", font=mid,
                fill=(255, 200, 60, int(255 * a)))
     # fade in from black, fade out to black
-    fade = min(ramp(t, 0, 0.5), 1 - ramp(t, DURATION - 0.4, DURATION))
+    fade = min(ramp(t, 0, 0.5), 1 - ramp(t, DURATION - FADE_OUT, DURATION))
     if fade < 1:
         d.rectangle((0, 0, SIZE, SIZE), fill=(0, 0, 0, int(255 * (1 - fade))))
     return img
