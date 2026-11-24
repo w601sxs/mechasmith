@@ -159,6 +159,10 @@ More in the [API reference](docs/api.md#conventions).
 Alpha (0.1). The API has settled around connections, but names may still change. How it got here,
 robot by robot: [docs/history.md](docs/history.md).
 
+## Contributing
+
+The most useful contribution is a robot your lab uses. [CONTRIBUTING.md](CONTRIBUTING.md) has how to add one and what to check before a pull request. If you use mechasmith, say so in the "Who's using mechasmith?" issue.
+
 ## License
 
 MIT
