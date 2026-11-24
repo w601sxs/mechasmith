@@ -18,6 +18,11 @@ It is built to be driven by coding agents. Every command prints JSON, every desi
 declared range, and the library refuses to build a robot with a floating part. So an agent can
 change a number, rebuild and read what happened, without a human checking the CAD.
 
+<p align="center">
+  <a href="https://github.com/w601sxs/mechasmith/blob/main/docs/media/reel.mp4"><img src="https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/reel-poster.png" alt="Watch the mechasmith reel: every example robot, then a Go2 designed and assembled from code" width="480"></a>
+  <br><sub>37 s reel: the examples together, then a Go2 designed and assembled from code. Made with <code>scripts/film_*.py</code>.</sub>
+</p>
+
 ![The bundled example robots, as built by mechasmith](https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/gallery.png)
 
 ## Install
