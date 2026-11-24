@@ -19,8 +19,8 @@ declared range, and the library refuses to build a robot with a floating part. S
 change a number, rebuild and read what happened, without a human checking the CAD.
 
 <p align="center">
-  <a href="https://github.com/w601sxs/mechasmith/blob/main/mechasmith_full.mp4"><img src="https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/reel-poster.png" alt="Watch the mechasmith reel: every example robot, then a Go2 designed and assembled from code" width="480"></a>
-  <br><sub>37 s reel: the examples together, then a Go2 designed and assembled from code. Made with <code>scripts/film_*.py</code>.</sub>
+  <a href="https://github.com/w601sxs/mechasmith/blob/main/mechasmith_full.mp4"><img src="https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/go2-assembly.gif" alt="A Unitree Go2 assembling itself from its parts in mechasmith" width="400"></a>
+  <br><sub>A Go2 assembling itself. Tap for the full 37 s reel. Made with <code>scripts/film_*.py</code>.</sub>
 </p>
 
 ![The bundled example robots, as built by mechasmith](https://raw.githubusercontent.com/w601sxs/mechasmith/main/docs/media/gallery.png)
