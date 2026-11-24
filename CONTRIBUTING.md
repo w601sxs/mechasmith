@@ -14,7 +14,7 @@ the library gets better.
 - **Add a library feature** a design needed. Keep the design simple and put the capability in the
   library (see [AGENTS.md](AGENTS.md), "Working on the library itself").
 - **Tell us you use it.** Comment on the
-  [Who's using mechasmith?](https://github.com/w601sxs/mechasmith/issues?q=is%3Aissue+%22Who%27s+using+mechasmith%22)
+  [Who's using mechasmith?](https://github.com/w601sxs/mechasmith/issues/3)
   issue. Say whether we may list your lab or company in the README.
 
 ## Setup

@@ -161,7 +161,7 @@ robot by robot: [docs/history.md](docs/history.md).
 
 ## Contributing
 
-The most useful contribution is a robot your lab uses. [CONTRIBUTING.md](CONTRIBUTING.md) has how to add one and what to check before a pull request. If you use mechasmith, say so in the "Who's using mechasmith?" issue.
+The most useful contribution is a robot your lab uses. [CONTRIBUTING.md](CONTRIBUTING.md) has how to add one and what to check before a pull request. If you use mechasmith, say so in [Who's using mechasmith?](https://github.com/w601sxs/mechasmith/issues/3).
 
 ## License
 
