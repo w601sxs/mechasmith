@@ -1,10 +1,11 @@
 \section{Experiments}
 \label{sec:experiments}
 
-We ask three questions. \textbf{Q1}: can the language express real robots faithfully
+We ask four questions. \textbf{Q1}: can the language express real robots faithfully
 (\cref{sec:fidelity})? \textbf{Q2}: do coding agents build valid robots more often with it than
-with existing interfaces, and which parts of it matter (\cref{sec:agents})? \textbf{Q3}: are the
-models usable for learning without editing (\cref{sec:rl})?
+with existing interfaces, and which parts of it matter (\cref{sec:agents})? \textbf{Q3}: do the
+errors it rules out matter for learning (\cref{sec:faults})? \textbf{Q4}: are its models usable for
+learning without editing (\cref{sec:rl})?
 
 \subsection{Q1: Rebuilding real robots}
 \label{sec:fidelity}
@@ -44,17 +45,33 @@ natural-language brief (e.g.\ a 4-DoF arm reaching 300\,mm holding 100\,g), prod
 passes the class test. (iii) \emph{Repair}: given a design with injected faults (shifted
 connector, flipped axis, oversized parent blocking a joint), fix it.
 
-\paragraph{Conditions.} The same agent and budget with: (A) raw MJCF/URDF authoring with MuJoCo
-available; (B) build123d with free placement plus a script that exports MJCF; (C) \ms; and
-ablations of (C) without the contact check, without the sweep, without the class test, and
-without declared parameter ranges.
+\paragraph{Conditions.} The same agent model, prompt scaffold and budget with: (A) raw MJCF/URDF
+with MuJoCo available; (A+) the same, plus the independent checker as a tool, which separates the
+value of feedback from that of the representation; (B) CadQuery/build123d with free placement,
+render feedback in the style of CADCodeVerify~\citep{alrashedy2025cadcodeverify} and an MJCF
+exporter, i.e.\ text-to-CAD extended to assemblies; (C) the Articraft SDK and
+harness~\citep{zhou2026articraft}, with its URDF converted to MJCF and actuators added from the task
+specification; (D) \ms; and ablations of (D) without the contact check, the sweep, the class test
+and parameter ranges.
 
-\paragraph{Metrics.} Rate of valid models (loads, connected, no home collisions), joint-axis error
-to the reference, mass error, class-test pass rate, iterations and tokens to first valid model.
-An independent checker computes the metrics for every condition, so (A) and (B) are scored by the
-same contact and sweep code that \ms uses.
+\paragraph{Metrics.} An independent checker that reads only the exported MJCF scores every
+condition: loads, connected (no floating bodies), collisions at home, joint-axis and origin error
+to the reference using the definitions of \citet{le2025articulateanything} (axis angle in
+$[0,\pi/2]$, distance between axis lines; success below 0.25\,rad and 50\,mm), mass error,
+class-test pass rate, and iterations and tokens to the first valid model.
 
-\subsection{Q3: Training on generated models}
+\subsection{Q3: Do authoring faults matter for learned policies?}
+\label{sec:faults}
+\planned{Not run yet.} Starting from correct models (\code{go2}, \code{microduck}), we inject the
+faults \ms rules out by construction: a part shifted off its mount, a joint axis flipped or tilted,
+links interpenetrating at home, and mass or inertia off by a factor, each at three severities. We
+train the same PPO setup~\citep{rudin2021legged,schulman2017ppo} on each faulty model and evaluate
+the policy on the correct one, alongside a policy trained with domain
+randomisation~\citep{peng2018dynrand} on the faulty model, to test whether randomisation hides
+discrete faults. Prior robustness studies perturb parameters smoothly~\citep{exarchos2021kinematic,campanaro2024erfi};
+these are the discrete faults found in real model files~\citep{tola2024urdf}.
+
+\subsection{Q4: Training on generated models}
 \label{sec:rl}
 The MJX export of \code{microduck} trains with Brax PPO~\citep{freeman2021brax,schulman2017ppo}
 to track 0.3\,m/s velocity commands with an even gait after $3\times10^8$ environment steps

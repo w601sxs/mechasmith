@@ -1,36 +1,61 @@
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Robot description formats.}
-URDF~\citep{quigley2009ros} and MJCF~\citep{todorov2012mujoco} describe a robot as a tree of bodies
-with explicit relative poses. Curated model collections~\citep{zakka2022menagerie} show how much
-expert effort a faithful model takes. Neither format can express that two parts touch, so
-connectivity is a convention rather than a checked property. \ms targets the same formats as
-outputs and moves the authoring one level up.
+\paragraph{Agents that author articulated assets and robots.}
+The closest work is Articraft~\citep{zhou2026articraft}: an LLM agent writes one Python program
+against a domain SDK, and a compile-time harness reports disconnected and overlapping parts back to
+the agent. Its user study finds the SDK and harness preferred over the same model writing URDF
+directly. Articraft targets passive objects, places parts by explicit coordinates, skips joint
+sweeps for cost, and runs no dynamics in the loop. We build actuated robots, remove coordinate
+placement from the interface, derive every joint frame from motor connections, and run sweeps and
+physical tests on every build. RoboForge~\citep{li2026roboforge} has an MLLM produce STEP, STL and
+URDF for actuated robots with real servos and scores the finished design with pre-fabrication
+checks, after which remaining issues are fixed by hand. In \ms the checks run inside the agent's
+loop and the most common errors cannot be written at all. RobotDesignGPT~\citep{sontakke2026robotdesigngpt}
+has a VLM write MJCF directly, refined from rendered views.
 
-\paragraph{Code CAD.}
-Programmatic CAD kernels such as CadQuery and build123d~\citep{cadquery,build123d} make geometry
-scriptable, and recent work generates CAD programs from text~\citep{khan2024text2cad}. These tools
-position parts with coordinates and know nothing about joints, actuators or simulation. \ms uses
-build123d as its geometry kernel but removes free placement from the interface and adds the
-kinematic and physical layer.
+\paragraph{Articulated objects from code and images.}
+Articulate-Anything~\citep{le2025articulateanything} and Real2Code~\citep{mandi2025real2code} cast
+articulation as code that compiles to URDF or MJCF; URDFormer~\citep{chen2024urdformer},
+URDF-Anything~\citep{li2025urdfanything} and PhysX-Anything~\citep{cao2026physxanything} predict
+URDFs from images or point clouds, and CAGE~\citep{liu2024cage} generates part graphs. All produce
+passive objects (typically evaluated on PartNet-Mobility~\citep{xiang2020sapien}) without
+actuators or a dynamics check. We adopt their joint-axis and origin errors
+(\cref{sec:agents}) so our numbers are comparable.
 
-\paragraph{Computational and evolutionary robot design.}
-Co-design of morphology and control has a long history~\citep{sims1994evolving} and benchmarks
-such as Evolution Gym~\citep{bhatia2021evogym}. LLM-driven variants propose designs from
-text~\citep{ringel2025text2robot,qiu2026robomorph,stella2023llmdesign}. These methods search a
-fixed design grammar; \ms is an open-ended language whose validity is enforced by construction and
-by checks, and is complementary: it can serve as the grammar.
+\paragraph{Text-to-CAD and assemblies.}
+LLMs generate single CAD parts as sketch-extrude sequences~\citep{khan2024text2cad} or CadQuery
+programs~\citep{alrashedy2025cadcodeverify,rukhovich2025cadrecode,guan2025cadcoder,kolodiazhnyi2026cadrille,mallis2025cadassistant},
+with feedback from renders or geometric rewards. Assembly-level systems are recent:
+ArtiCAD~\citep{shui2026articad} aligns LLM-defined connector frames and exports URDF, checking
+interference with a VLM; AssemCAD~\citep{dong2026assemcad} places typed parts by mates and checks
+clashes and connectivity on the B-Rep. Neither models actuators or mass or runs a simulator.
+CADEngBench~\citep{singh2026cadengbench} adds static FEA and joint checks; BesiegeField~\citep{zhang2026besiegefield}
+and LMBuild~\citep{liu2026lmbuild} score agent-built machines in simulation. Connection-based
+placement is therefore not new; what \ms adds is a connection layer whose joints are actuators and
+whose output is a simulatable robot checked dynamically.
 
-\paragraph{LLMs writing code against verifiers.}
-Agents improve markedly when an environment returns precise feedback: on software
-issues~\citep{jimenez2024swebench}, by self-reflection~\citep{shinn2023reflexion,madaan2023selfrefine},
-in program search with an evaluator~\citep{romeraparedes2024funsearch}, and when writing reward
-functions checked in simulation~\citep{ma2024eureka}. Generative simulation pipelines create
-tasks and scenes for robot learning~\citep{wang2024robogen}. We supply the missing verifier for
-the robot itself.
+\paragraph{LLM-driven robot design.}
+LLMs have been proposed as robot designers~\citep{stella2023llmdesign} and used as mutation
+operators over robot programs~\citep{lehman2022elm}, modular grammars~\citep{qiu2026robomorph},
+voxel robots~\citep{song2025laser}, and MJCF parameters with rewards~\citep{fang2025robomore,qiu2025debate2create};
+Text2Robot~\citep{ringel2025text2robot} evolves and fabricates quadrupeds from text. Classical
+co-design~\citep{sims1994evolving,bhatia2021evogym,yuan2022transform2act} searches fixed spaces.
+These methods search inside a template; \ms is an open language that such a search could target.
 
-\paragraph{Simulation for learning.}
-GPU simulators~\citep{freeman2021brax,makoviychuk2021isaac} make policy training cheap, which moves
-the bottleneck to producing correct models. \ms emits primitive-collision models for MJX alongside
-the mesh model (\cref{sec:rl}).
+\paragraph{Model error and learned policies.}
+Domain randomisation~\citep{peng2018dynrand} and identified models~\citep{tan2018simtoreal,hwangbo2019anymal,bjelonic2026bridging}
+address the gap between a model and the robot; accurate models reduce the randomisation
+needed~\citep{xie2021dynrandrevisited}, and policies are trained to be robust to smooth kinematic
+and dynamic perturbations~\citep{exarchos2021kinematic,campanaro2024erfi,mankowitz2020robust}.
+Optimisers are known to exploit simulator errors~\citep{lehman2020creativity}, and public URDFs
+contain many inconsistencies~\citep{tola2024urdf}. We study a different perturbation: the discrete
+authoring faults (detached parts, flipped axes, interpenetration, wrong mass) that model files
+actually contain, and whether policies trained on them work on the correct model
+(\cref{sec:faults}).
+
+\paragraph{Agents and verifiers; simulation.}
+Agents improve with precise environment feedback~\citep{jimenez2024swebench,shinn2023reflexion,madaan2023selfrefine,romeraparedes2024funsearch,ma2024eureka}.
+Generative simulation creates tasks and assets for robot learning~\citep{wang2024robogen,wang2024gensim}
+on GPU simulators~\citep{freeman2021brax,makoviychuk2021isaac,rudin2021legged}. \ms supplies the
+robot model these pipelines take as given.

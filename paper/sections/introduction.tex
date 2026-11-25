@@ -8,7 +8,8 @@ slow, expert work, and curated collections such as MuJoCo Menagerie~\citep{zakka
 exist because good models are scarce. Large language models have been proposed as robot
 designers~\citep{stella2023llmdesign} and used to evolve
 morphologies~\citep{ringel2025text2robot,qiu2026robomorph}, but these systems search over
-restricted, hand-built parameterisations. Asking a general coding agent to write a new model from
+restricted, hand-built parameterisations, and agentic asset generators such as
+Articraft~\citep{zhou2026articraft} build passive objects rather than actuated robots. Asking a general coding agent to write a new model from
 scratch exposes the problem directly: the formats encode every body as a pose relative to its
 parent, so a single wrong offset produces a part that floats, a joint that turns about the wrong
 axis, or two links that overlap at rest. Nothing in the file reports the error. The agent, which
@@ -36,14 +37,18 @@ can read. \ms implements this view as a Python library with three commitments:
 
 Our contributions are:
 \begin{itemize}
-\item A robot description language whose core invariant (every part is reached through a checked
-  connection) removes the dominant class of silent errors in hand-written simulation models.
+\item A robot description language for agents in which actuated robots are built only through
+  checked connections, with every joint anchor, axis and body frame derived from the actuators
+  rather than written, so detached parts and misplaced joints cannot be expressed.
 \item A verifier suite that converts physical validity into structured feedback suited to
   agentic iteration, from geometric checks to closed-loop simulation tests.
 \item Evidence of expressiveness: six real robots rebuilt from public references, including
   closed kinematic loops, thrust-vectoring rotors and torque-controlled legged platforms, each
   matching its reference's joint axes, and models that train walking policies without further
   editing (\cref{sec:fidelity,sec:rl}).
-\item \planned{A controlled study of coding agents building robots with \ms against MJCF/URDF
-  authoring and free-placement code CAD, with ablations of each verifier (\cref{sec:agents}).}
+\item \planned{A benchmark of Rebuild, Specify and Repair tasks for actuated robots, scored by an
+  independent checker, comparing agents writing MJCF/URDF, code CAD, the Articraft SDK and \ms,
+  with ablations of each verifier (\cref{sec:agents}).}
+\item \planned{A fault-injection study showing which authoring errors silently corrupt policies
+  trained on the model (\cref{sec:faults}).}
 \end{itemize}
