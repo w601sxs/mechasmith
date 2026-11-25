@@ -1,0 +1,20 @@
+\begin{abstract}
+Coding agents can now write and debug substantial software, yet asking one to design a robot that
+can be simulated mostly yields models that fail silently: parts float millimetres from where they
+should attach, joint axes point the wrong way, links interpenetrate, and the masses are guesses.
+These errors are invisible in the text of an MJCF or URDF file and surface only as odd behaviour
+in simulation, long after they were made. We argue that the description language, not the agent,
+is the bottleneck. We present \ms, a Python library in which a robot is one program and a part
+can enter the robot only through a \emph{connection} to a part already in it; the library derives
+every pose, joint anchor, axis and body frame from those connections and rejects a design with a
+floating part at the line that caused it. Each build returns a machine-readable report of
+verifiable properties: mass from the CAD solids, collisions at rest, the usable range of every
+joint and what blocks it, and a physical test matched to the robot (standing on its actuators,
+hovering, holding a payload). With this interface, six robots spanning an arm, a closed-loop
+gripper, a quadrotor, a biped, a quadruped and a 29-DoF humanoid were rebuilt from public
+references in 62--242 lines each, with every joint axis within 0.8\,mm of the reference's and
+total mass within 6.2\% where the reference's mass is independent, and the resulting models train
+locomotion policies directly.
+\planned{one sentence with the headline number of the agent study (\cref{sec:agents}):
+success rate of agents using \ms against agents writing MJCF/URDF or free-placement code CAD.}
+\end{abstract}

@@ -1,0 +1,63 @@
+\section{Experiments}
+\label{sec:experiments}
+
+We ask three questions. \textbf{Q1}: can the language express real robots faithfully
+(\cref{sec:fidelity})? \textbf{Q2}: do coding agents build valid robots more often with it than
+with existing interfaces, and which parts of it matter (\cref{sec:agents})? \textbf{Q3}: are the
+models usable for learning without editing (\cref{sec:rl})?
+
+\subsection{Q1: Rebuilding real robots}
+\label{sec:fidelity}
+Each of the six reference designs was built by matching a public reference model through rounds of
+implement, critique, improve and rebuild; when a robot needed something the API could not express
+(closed loops for the gripper, thrust for the quadrotor, torque motors for the quadruped), the
+library was extended rather than the design worked around. \Cref{tab:designs} is generated from
+the build reports.
+
+\begin{table*}[t]
+  \centering
+  \caption{The bundled designs, from their build reports. LoC: non-blank, non-comment lines of the
+  design file. $\Delta m$: total mass against the reference model (omitted where there is no
+  independent reference; the G1's link masses are taken from its reference as budgets). Coll.:
+  overlapping part pairs at home. Full range: joints whose sweep reaches both declared limits;
+  the limits found are physical self-contacts (gripper pads meeting at closure, left and right
+  feet meeting at full abduction, the SO-101 elbow stopping at 2.36\,rad as the reference's
+  does). Test: the class test of \cref{sec:report}; Microduck's reference model also fails the
+  actuator-only stand test at its real mass.}
+  \label{tab:designs}
+  \input{generated/table_designs}
+\end{table*}
+
+\planned{Joint-axis agreement per design from \code{scripts/compare\_joints.py} against each
+reference (max distance between axis lines in mm, max angle in degrees) as two extra columns;
+README reports $\le$0.2\,mm for SO-101, $\le$0.8\,mm for Microduck, coincident for the others.
+Extend \code{collect\_results.py} to run it.}
+\planned{Authoring effort: lines of the reference MJCF/URDF vs.\ lines of the design file.}
+
+\subsection{Q2: Coding agents designing robots}
+\label{sec:agents}
+\planned{Not run yet. Design below; see \code{paper/README.md} for the protocol.}
+
+\paragraph{Tasks.} (i) \emph{Rebuild}: given a reference's published numbers (joint table,
+masses, dimensions) but not its model file, produce a model. (ii) \emph{Specify}: given a
+natural-language brief (e.g.\ a 4-DoF arm reaching 300\,mm holding 100\,g), produce a design that
+passes the class test. (iii) \emph{Repair}: given a design with injected faults (shifted
+connector, flipped axis, oversized parent blocking a joint), fix it.
+
+\paragraph{Conditions.} The same agent and budget with: (A) raw MJCF/URDF authoring with MuJoCo
+available; (B) build123d with free placement plus a script that exports MJCF; (C) \ms; and
+ablations of (C) without the contact check, without the sweep, without the class test, and
+without declared parameter ranges.
+
+\paragraph{Metrics.} Rate of valid models (loads, connected, no home collisions), joint-axis error
+to the reference, mass error, class-test pass rate, iterations and tokens to first valid model.
+An independent checker computes the metrics for every condition, so (A) and (B) are scored by the
+same contact and sweep code that \ms uses.
+
+\subsection{Q3: Training on generated models}
+\label{sec:rl}
+The MJX export of \code{microduck} trains with Brax PPO~\citep{freeman2021brax,schulman2017ppo}
+to track 0.3\,m/s velocity commands with an even gait after $3\times10^8$ environment steps
+(about 25 minutes on one GPU), and a single policy for \code{microduck\_jetpack} walks, hops,
+flies and lands. Both use the build outputs unedited.
+\planned{Report learning curves and the hardware used; state seeds and variance.}

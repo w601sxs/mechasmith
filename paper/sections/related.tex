@@ -1,0 +1,36 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Robot description formats.}
+URDF~\citep{quigley2009ros} and MJCF~\citep{todorov2012mujoco} describe a robot as a tree of bodies
+with explicit relative poses. Curated model collections~\citep{zakka2022menagerie} show how much
+expert effort a faithful model takes. Neither format can express that two parts touch, so
+connectivity is a convention rather than a checked property. \ms targets the same formats as
+outputs and moves the authoring one level up.
+
+\paragraph{Code CAD.}
+Programmatic CAD kernels such as CadQuery and build123d~\citep{cadquery,build123d} make geometry
+scriptable, and recent work generates CAD programs from text~\citep{khan2024text2cad}. These tools
+position parts with coordinates and know nothing about joints, actuators or simulation. \ms uses
+build123d as its geometry kernel but removes free placement from the interface and adds the
+kinematic and physical layer.
+
+\paragraph{Computational and evolutionary robot design.}
+Co-design of morphology and control has a long history~\citep{sims1994evolving} and benchmarks
+such as Evolution Gym~\citep{bhatia2021evogym}. LLM-driven variants propose designs from
+text~\citep{ringel2024text2robot,qiu2024robomorph,stella2023llmdesign}. These methods search a
+fixed design grammar; \ms is an open-ended language whose validity is enforced by construction and
+by checks, and is complementary: it can serve as the grammar.
+
+\paragraph{LLMs writing code against verifiers.}
+Agents improve markedly when an environment returns precise feedback: on software
+issues~\citep{jimenez2024swebench}, by self-reflection~\citep{shinn2023reflexion,madaan2023selfrefine},
+in program search with an evaluator~\citep{romeraparedes2024funsearch}, and when writing reward
+functions checked in simulation~\citep{ma2024eureka}. Generative simulation pipelines create
+tasks and scenes for robot learning~\citep{wang2024robogen}. We supply the missing verifier for
+the robot itself.
+
+\paragraph{Simulation for learning.}
+GPU simulators~\citep{freeman2021brax,makoviychuk2021isaac} make policy training cheap, which moves
+the bottleneck to producing correct models. \ms emits primitive-collision models for MJX alongside
+the mesh model (\cref{sec:rl}).

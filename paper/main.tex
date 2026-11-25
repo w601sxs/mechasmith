@@ -1,0 +1,72 @@
+% mechasmith: ICML 2027 submission draft.
+%
+% ICML 2027's author kit is not published yet. The ICML 2026 style files are vendored here as a
+% stand-in. When the 2027 kit is out: drop icml2027.sty/.bst into this folder and change the two
+% lines marked STYLE below. Nothing else should need to change.
+\documentclass{article}
+
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\newcommand{\theHalgorithm}{\arabic{algorithm}}
+
+\usepackage{icml2026} % STYLE: icml2027 (add [accepted] for the camera-ready)
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{xspace}
+\usepackage[textsize=tiny]{todonotes}
+
+\graphicspath{{figures/}}
+
+\newcommand{\ms}{\textsc{mechasmith}\xspace}
+\newcommand{\code}[1]{\texttt{#1}}
+% Draft markers. \planned marks a claim whose experiment has not been run yet; none may remain at
+% submission (grep for them).
+\newcommand{\planned}[1]{\todo[inline,color=orange!25,caption={planned}]{PLANNED: #1}}
+\newcommand{\note}[1]{\todo[color=blue!15,caption={note}]{#1}}
+
+\icmltitlerunning{Robots as Code for Coding Agents}
+
+\begin{document}
+
+\twocolumn[
+  \icmltitle{Connect, Don't Place: A Verifiable Robot Description Language\\
+    for Coding Agents}
+
+  \begin{icmlauthorlist}
+    \icmlauthor{Anonymous Author(s)}{anon}
+  \end{icmlauthorlist}
+  \icmlaffiliation{anon}{Anonymous Institution}
+  \icmlcorrespondingauthor{Anonymous Author(s)}{anon@example.com}
+
+  \icmlkeywords{LLM agents, robot design, program synthesis, simulation, MuJoCo, embodied AI}
+
+  \vskip 0.3in
+]
+
+\printAffiliationsAndNotice{}
+
+\input{sections/abstract}
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/method}
+\input{sections/experiments}
+\input{sections/discussion}
+\input{sections/impact}
+
+\bibliography{refs}
+\bibliographystyle{icml2026} % STYLE: icml2027
+
+\newpage
+\appendix
+\onecolumn
+\input{sections/appendix}
+
+\end{document}

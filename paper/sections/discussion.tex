@@ -1,0 +1,19 @@
+\section{Limitations and Discussion}
+\label{sec:discussion}
+
+\paragraph{What is not checked.} The report covers connectivity, interference along single-joint
+sweeps from home, mass and a short class test. It does not check multi-joint self-collision over
+the whole configuration space, structural strength, manufacturability beyond 3D-printing infill,
+or cable routing. Masses depend on density and infill models fitted per robot.
+
+\paragraph{Fidelity is measured against simulation models.} Our references are public MJCF/URDF
+models, themselves approximations; agreement with them is not agreement with the hardware. Masses
+for parts we do not model (fasteners, wiring) explain most of the remaining gaps (e.g.\ Microduck's
+legs are 10\% light).
+
+\paragraph{Examples and library grew together.} The library was extended while the designs were
+written, each robot adding what it needed. Q1 therefore shows the
+language can express these robots, not that an agent finds them unaided; that is what Q2 measures.
+
+\paragraph{Generality.} Designs are limited to rigid bodies with revolute joints, pins and rotors.
+Prismatic joints, tendons and soft parts are future work.
