@@ -88,13 +88,13 @@ Microduck; unmeasured).
 
 ## Next steps
 
-- [ ] Write the independent checker and the fault injector.
+- [ ] Write the independent checker.
 - [ ] Assemble the Q2 task set (references not yet in `designs/`).
 - [ ] Run a pilot (3 tasks x 3 conditions) to size the budget.
 - [ ] Axis-error columns in `collect_results.py`.
 - [ ] Figure 2: snippet, `AttachmentError`, report fragment.
 - [ ] Formal statement of the connectivity invariant.
-- [ ] RL curves for Q3.
+- [ ] RL curves and seeds for Q4.
 - [ ] Verify the 14 bibliography entries above the VERIFIED line in `refs.bib`.
 - [ ] Confirm Articraft's NeurIPS 2026 venue (one source only) and Debate2Create's venue.
 - [ ] Write the fault injector and start Q3 runs (independent of Q2).
