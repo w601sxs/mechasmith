@@ -10,6 +10,8 @@ mechasmith are judged by identical code. Output is one JSON object:
   mass_kg            total mass
   floating_parts     geoms not connected to the root body (see "Connected" below)
   detached_bodies    bodies not connected to their parent body
+  split_parts        geoms whose mesh is in several disconnected pieces (a part drawn apart from
+                     itself, which the connection tests above cannot see inside one geom)
   overlaps           pairs of geoms in different bodies whose intersection exceeds --overlap mm^3
   joints             with --reference: per joint (matched by name, or --map), the axis error and
                      axis-line distance as defined by Le et al. (Articulate-Anything, ICLR 2025):
@@ -85,6 +87,31 @@ def _distance(a: trimesh.Trimesh, b: trimesh.Trimesh) -> float:
         inside = dst.contains(pts) if dst.is_watertight else np.zeros(len(pts), bool)
         return 0.0 if inside.any() else float(dist.min())
     return min(one_way(a, b), one_way(b, a))
+
+
+def _pieces(mesh: trimesh.Trimesh, tol: float) -> int:
+    """Number of pieces of a triangle mesh more than `tol` (m) apart. Edge-connected patches come
+    first; CAD tessellations do not always share vertices along seams, so patches that touch
+    (within tol) are merged."""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+    n = len(mesh.faces)
+    if n == 0:
+        return 0
+    adj = mesh.face_adjacency
+    g = coo_matrix((np.ones(len(adj)), (adj[:, 0], adj[:, 1])), shape=(n, n))
+    k, label = connected_components(g, directed=False)
+    if k == 1:
+        return 1
+    patches = [mesh.submesh([np.flatnonzero(label == i)], append=True) for i in range(k)]
+    parent = list(range(k))
+    find = lambda i: i if parent[i] == i else find(parent[i])
+    for i, j in itertools.combinations(range(k), 2):
+        if find(i) != find(j) and _aabb_gap(patches[i], patches[j]) <= tol:
+            _, d, _ = trimesh.proximity.closest_point(patches[j], patches[i].vertices)
+            if d.min() <= tol:
+                parent[find(i)] = find(j)
+    return len({find(i) for i in range(k)})
 
 
 def _overlap_mm3(a: trimesh.Trimesh, b: trimesh.Trimesh) -> float:
@@ -185,7 +212,13 @@ def geometry_checks(m: mujoco.MjModel, d: mujoco.MjData, touch_mm: float, overla
         theirs = [g for g in geoms if body[g] == parent(b)]
         if theirs and not any((min(g, h), max(g, h)) in touching for g in mine for h in theirs):
             detached.append(bname(b))
-    return {"parts": len(geoms), "pins": len(pinned), "floating_parts": floating, "detached_bodies": detached,
+    split = []
+    for g in geoms:
+        if m.geom_type[g] == mujoco.mjtGeom.mjGEOM_MESH:
+            n = _pieces(meshes[g], tol)
+            if n > 1:
+                split.append({"geom": name(g), "pieces": n})
+    return {"parts": len(geoms), "pins": len(pinned), "split_parts": split, "floating_parts": floating, "detached_bodies": detached,
             "overlaps": sorted(overlaps, key=lambda o: -o["overlap_mm3"])}
 
 
@@ -305,7 +338,8 @@ def check(xml: str, reference: str | None = None, mapping: dict | None = None, t
         out["joints"] = joint_errors(joint_lines(m, d), joint_lines(mr, dr), mapping or {})
     if stand:
         out["stand"] = stand_test(xml, pd)
-    out["valid"] = out["loads"] and not out["floating_parts"] and not out["detached_bodies"] and not out["overlaps"]
+    out["valid"] = (out["loads"] and not out["floating_parts"] and not out["detached_bodies"]
+                    and not out["overlaps"] and not out["split_parts"])
     return out
 
 

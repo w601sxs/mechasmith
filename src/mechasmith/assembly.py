@@ -401,13 +401,15 @@ class Assembly:
     def hinge(self, name: str, a: Component, b: Component, at, axis, range: tuple[float, float] | None = None, *,
               actuator: ActuatorModel | None = None, stiffness: float = 0.0, springref: float = 0.0,
               damping: float | None = None, armature: float | None = None, pin: float = 3.0,
-              child_link: str | None = None) -> None:
+              child_link: str | None = None, cross: bool = False) -> None:
         """A pin between two parts, about `axis` through the world point `at` (mm), with no
         servo: passive unless you give an `actuator`. The pin's axis must pass through both parts
         (within `pin` mm, so clevis forks and bored holes count; checked).
         If `b` is not connected yet it becomes the moving side (`range` required). If `b` is
         already connected, the pin closes a loop (a four-bar, a parallel gripper): it is kept
-        as a constraint (MJCF `equality connect`) and the joint range does not apply."""
+        as a constraint (MJCF `equality connect`) and the joint range does not apply.
+        `cross=True` marks a cross piece (asm.chain's hub=None): consecutive cross pieces form a
+        universal joint, whose outer bodies do not collide in the MJCF."""
         at, axis = np.asarray(at, float), unit(axis)
         self._require_placed(a, f"hinge {name}")
         if b.pose is None:
@@ -429,7 +431,8 @@ class Assembly:
         self.edges.append(_Edge(a, b, "joint", dict(
             name=name, anchor=at, axis=unit(axis), range=tuple(range), actuator=actuator,
             child_link=child_link or f"{name}_link",
-            dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature, pin=pin))))
+            dynamics=dict(stiffness=stiffness, springref=springref, damping=damping, armature=armature, pin=pin,
+                          cross=cross))))
 
     def rotor(self, name: str, part: Component, at, axis=(0, 0, 1.0), *, spin: int, thrust_max: float,
               torque_ratio: float, source: str = "") -> None:

@@ -152,11 +152,12 @@ def build_spec(robot: Robot, out_dir: Path, base_height: float = 0.0, sim: str |
 
     add_link(robot.root, spec.worldbody, np.zeros(3))
 
-    # Cross pieces (two joints through one point, a universal joint): the bodies on either side
-    # of the cross are two joints apart, so MuJoCo would let them collide at the pin; exclude them.
+    # Cross pieces (two joints through one point or nearly, a universal joint): the bodies on
+    # either side of the cross are two joints apart, so MuJoCo would let their fitted collision
+    # shapes touch at the joint; exclude them.
     for j in robot.joints:
         pj = robot.parent_joint(j.parent)
-        if pj is not None and np.linalg.norm(j.anchor - pj.anchor) < max(j.pin, pj.pin) + 1.0:
+        if pj is not None and ((j.cross and pj.cross) or np.linalg.norm(j.anchor - pj.anchor) < max(j.pin, pj.pin) + 1.0):
             spec.add_exclude(bodyname1=pj.parent.name, bodyname2=j.child.name)
     # Closed loops: each pin becomes a connect constraint (its anchor in the first body's frame;
     # MuJoCo finds the matching point in the second at the home pose). Pinned bodies do not collide.

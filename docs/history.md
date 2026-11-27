@@ -89,3 +89,16 @@ per-robot critique rounds are in [iterations/](iterations/).
   vectoring in the library: `mjcf.hover_trim` solves rotor thrusts and the tilt-servo targets
   together and gives the allocation Jacobian, used by the `hover` key, the keyframes of rotorcraft
   with joints and the build's closed-loop hover check. Assumptions and gaps in the example's README.
+- Cross pieces done properly (found by the paper's independent checker, `paper/experiments/checker/`).
+  `asm.chain`'s `hub=None` joints drew the child's pin and the parent's strut through the same point
+  and excused the overlap with a pin allowance of 15 to 17 mm: the G1's waist and ankles overlapped by
+  5 to 7.5 cm^3. A cross piece is now a clevis: a pin on one side through the bored cheeks of a yoke on
+  the other (0.1 mm clearance, a pin allowance of the pin radius + 1 mm). Two cross pieces in a row
+  (the waist's universal joint, the ankle) put both pins on the middle link and carve each outer link
+  by the other's yoke swept over both joints' ranges. The same check found the G1's hands floating
+  29 mm from their wrists (a chain's last `add=` shapes were never joined to the joint) and three
+  structures that were invalid solids (corner spheres exactly tangent to the struts); the strut now
+  runs into the added shapes, every chain link must be one solid, and corners are 0.02 mm proud.
+  G1: no overlaps at home, mass, stand test and every joint's usable range unchanged except waist pitch,
+  now its full +-0.52 rad (was +-0.477). The other seven designs' reports are identical.
+

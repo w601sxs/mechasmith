@@ -149,6 +149,7 @@ class Joint:
     damping: float | None = None       # N*m*s/rad; None: the actuator's
     armature: float | None = None
     pin: float = 0.0                   # mm: the pin may overlap both sides within this radius
+    cross: bool = False                # a cross piece (asm.chain hub=None)
 
 
 class Robot:
@@ -286,7 +287,7 @@ class Robot:
             keep = axes == "pseudo" or (axes in ("closest", "same") and rng == j.range)
             self.add_joint(rename(j.name), parent, child, M @ j.anchor, axis, rng, j.actuator,
                            stiffness=j.stiffness, springref=j.springref if keep else -j.springref,
-                           damping=j.damping, armature=j.armature, pin=j.pin)
+                           damping=j.damping, armature=j.armature, pin=j.pin, cross=j.cross)
         for a, b, p in list(self.loops):
             if a.name.startswith(src) or b.name.startswith(src):
                 self.loops.append((self.links[rename(a.name)] if a.name.startswith(src) else a,
