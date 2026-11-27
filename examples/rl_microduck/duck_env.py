@@ -219,3 +219,22 @@ class DuckJoystick(PipelineEnv):
             info["cmd_now"] * jp.array([2.0, 2.0, 0.5]),
             jp.array([jp.cos(a), jp.sin(a)]),                      # gait clock
         ])
+
+
+def domain_randomize(sys, rng):
+    """Brax randomization_fn: per environment, scale every body's mass by U(0.8, 1.2), move its
+    centre of mass by up to 5 mm per axis and set the floor-contact friction in U(0.6, 1.4).
+    These are the usual smooth randomisations; the paper asks whether they hide discrete
+    authoring faults."""
+    @jax.vmap
+    def draw(key):
+        k1, k2, k3 = jax.random.split(key, 3)
+        mass = sys.body_mass * jax.random.uniform(k1, sys.body_mass.shape, minval=0.8, maxval=1.2)
+        ipos = sys.body_ipos + jax.random.uniform(k2, sys.body_ipos.shape, minval=-0.005, maxval=0.005)
+        mu = jax.random.uniform(k3, (), minval=0.6, maxval=1.4)
+        return mass, ipos, sys.geom_friction.at[:, 0].set(mu)
+    mass, ipos, friction = draw(rng)
+    in_axes = jax.tree_util.tree_map(lambda x: None, sys)
+    in_axes = in_axes.tree_replace({"body_mass": 0, "body_ipos": 0, "geom_friction": 0})
+    sys = sys.tree_replace({"body_mass": mass, "body_ipos": ipos, "geom_friction": friction})
+    return sys, in_axes

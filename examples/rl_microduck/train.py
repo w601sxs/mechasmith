@@ -1,7 +1,10 @@
 """Train the duck to walk on command with Brax PPO on MJX.
 
 usage: python3 train.py [--steps 150000000] [--envs 8192] [--smoke]
+                        [--xml duck_mjx.xml] [--out policy.pkl] [--seed 0] [--dr]
 --smoke runs a tiny CPU-sized job to check that everything wires up.
+--xml trains on another model of the duck (the paper's fault-injection study trains on faulty ones);
+--dr randomises body masses, centres of mass and friction per environment (duck_env.domain_randomize).
 Writes policy.pkl (Brax params) and reports progress and the policy through train_report
 when it runs on Scale Train.
 """
@@ -17,7 +20,7 @@ import numpy as np
 from brax.training.agents.ppo import networks as ppo_networks
 from brax.training.agents.ppo import train as ppo
 
-from duck_env import DuckJoystick
+from duck_env import DuckJoystick, XML, domain_randomize
 
 try:
     from train_report import report
@@ -29,13 +32,18 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--steps", type=int, default=150_000_000)
 ap.add_argument("--envs", type=int, default=8192)
 ap.add_argument("--smoke", action="store_true")
+ap.add_argument("--xml", default=str(XML))
+ap.add_argument("--out", default="policy.pkl")
+ap.add_argument("--seed", type=int, default=0)
+ap.add_argument("--dr", action="store_true")
 a = ap.parse_args()
 if a.smoke:
     a.steps, a.envs = 20_000, 32
 
 print("devices", jax.devices(), flush=True)
-report("start", {"devices": str(jax.devices()), "steps": a.steps, "envs": a.envs})
-env = DuckJoystick()
+report("start", {"devices": str(jax.devices()), "steps": a.steps, "envs": a.envs, "xml": a.xml,
+                 "seed": a.seed, "dr": a.dr})
+env = DuckJoystick(xml=a.xml)
 t0 = time.time()
 
 
@@ -77,10 +85,11 @@ make_policy, params, _ = ppo.train(
     environment=env, num_timesteps=a.steps, num_evals=4 if a.smoke else 15, episode_length=1000,
     normalize_observations=True, action_repeat=1, unroll_length=20, num_minibatches=4 if a.smoke else 32,
     num_updates_per_batch=4, discounting=0.97, learning_rate=3e-4, entropy_cost=1e-2, num_envs=a.envs,
-    batch_size=16 if a.smoke else 256, max_grad_norm=1.0, network_factory=make_networks, seed=0,
+    batch_size=16 if a.smoke else 256, max_grad_norm=1.0, network_factory=make_networks, seed=a.seed,
+    randomization_fn=domain_randomize if a.dr else None,
     progress_fn=progress, policy_params_fn=snapshot, log_training_metrics=True, training_metrics_steps=5_000_000, num_eval_envs=8 if a.smoke else 128)
 
-with open("policy.pkl", "wb") as f:
+with open(a.out, "wb") as f:
     pickle.dump(jax.device_get(params), f)
 
 size, n = send_policy("policy_chunk", params)
