@@ -35,6 +35,20 @@ README reports $\le$0.2\,mm for SO-101, $\le$0.8\,mm for Microduck, coincident f
 Extend \code{collect\_results.py} to run it.}
 \planned{Authoring effort: lines of the reference MJCF/URDF vs.\ lines of the design file.}
 
+\subsection{Which checks see authoring faults?}
+\label{sec:detect}
+\planned{Run \code{paper/experiments/checker/detect.py} on all eight designs and report its
+table here.} An independent checker (\cref{app:checker}) reads only the exported MJCF and uses
+exact mesh geometry rather than MuJoCo's convex hulls. We inject three kinds of fault into each
+design's exported model: a part moved off its mount, a joint moved with its subtree, and a joint
+axis tilted or flipped, at three severities and several random targets each. We then record
+which checks catch them: MuJoCo compiling the model (all that hand-written MJCF gets), the joint
+metric used for generated articulated objects~\citep{le2025articulateanything}, axis sign, and
+the checker's geometry tests. That joint metric folds the axis angle into $[0,\pi/2]$ and accepts
+50\,mm of axis offset, so by construction it cannot see a flipped joint, and it misses joint
+shifts of a few millimetres that matter for an actuated robot. \ms cannot express any of these
+faults.
+
 \subsection{Q2: Coding agents designing robots}
 \label{sec:agents}
 \planned{Not run yet. Design below; see \code{paper/README.md} for the protocol.}
@@ -69,7 +83,10 @@ train the same PPO setup~\citep{rudin2021legged,schulman2017ppo} on each faulty 
 the policy on the correct one, alongside a policy trained with domain
 randomisation~\citep{peng2018dynrand} on the faulty model, to test whether randomisation hides
 discrete faults. Prior robustness studies perturb parameters smoothly~\citep{exarchos2021kinematic,campanaro2024erfi};
-these are the discrete faults found in real model files~\citep{tola2024urdf}.
+these are the discrete faults found in real model files~\citep{tola2024urdf}. Links overlapping each other
+are not among them: training models for GPU simulation usually collide the robot only with the
+floor, so such overlaps are invisible during training and only a geometric check
+(\cref{sec:detect}) finds them.
 
 \subsection{Q4: Training on generated models}
 \label{sec:rl}
