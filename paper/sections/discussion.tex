@@ -15,5 +15,15 @@ legs are 10\% light).
 written, each robot adding what it needed. Q1 therefore shows the
 language can express these robots, not that an agent finds them unaided; that is what Q2 measures.
 
+\paragraph{Construction guarantees have edges.} Running the independent checker
+(\cref{app:checker}) on our own designs found three faults in the G1 that \ms's checks had passed:
+cross-piece joints whose parts overlapped by 5--7.5\,cm$^3$ inside an over-generous pin allowance,
+hands drawn 29\,mm from the wrists they belong to (shapes added to a limb's last link were never
+joined to it), and three structures that were invalid solids. Each was a gap in a library routine,
+not in a design, so each was fixed once in the library (cross pieces are now clevis joints, and
+every limb link must be a single solid), after which all eight designs pass both checkers. The
+guarantee that nothing floats holds for what the connection API places; derived geometry needs
+its own checks, and an independent checker is how we found where they were missing.
+
 \paragraph{Generality.} Designs are limited to rigid bodies with revolute joints, pins and rotors.
 Prismatic joints, tendons and soft parts are future work.

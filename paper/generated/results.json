@@ -144,20 +144,20 @@
     "mass_err_pct": null,
     "home_collisions": 0,
     "swept_joints": 29,
-    "full_range_joints": 15,
+    "full_range_joints": 16,
     "test": {
       "kind": "stand",
       "pass": true,
       "stands": true,
       "seconds": 3.0,
       "settled_pitch_deg": 0.0,
-      "settled_roll_deg": -0.0,
+      "settled_roll_deg": 0.0,
       "height_drop_mm": 0.7,
       "support_margin_mm": 64.6,
       "pd_stiffness_ratio": 1.46,
       "note": "servo stiffness alone can hold this pose upright"
     },
-    "build_s": 41.3
+    "build_s": 59.0
   },
   {
     "design": "duck_leg",
