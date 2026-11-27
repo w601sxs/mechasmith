@@ -1,0 +1,3246 @@
+{
+  "summary": [
+    {
+      "fault": "part_offset",
+      "severity": 1,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.42857142857142855,
+      "any": 0.42857142857142855
+    },
+    {
+      "fault": "part_offset",
+      "severity": 3,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.4857142857142857,
+      "any": 0.4857142857142857
+    },
+    {
+      "fault": "part_offset",
+      "severity": 10,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.5428571428571428,
+      "any": 0.5428571428571428
+    },
+    {
+      "fault": "anchor_shift",
+      "severity": 1,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.6,
+      "any": 0.6
+    },
+    {
+      "fault": "anchor_shift",
+      "severity": 3,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.6857142857142857,
+      "any": 0.6857142857142857
+    },
+    {
+      "fault": "anchor_shift",
+      "severity": 10,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.7714285714285715,
+      "any": 0.7714285714285715
+    },
+    {
+      "fault": "axis_tilt",
+      "severity": 5,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 0.0,
+      "geometry": 0.0,
+      "any": 0.0
+    },
+    {
+      "fault": "axis_tilt",
+      "severity": 15,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 1.0,
+      "sign": 0.0,
+      "geometry": 0.0,
+      "any": 1.0
+    },
+    {
+      "fault": "axis_tilt",
+      "severity": 180,
+      "n": 35,
+      "compile": 0.0,
+      "joint": 0.0,
+      "sign": 1.0,
+      "geometry": 0.0,
+      "any": 1.0
+    }
+  ],
+  "rows": [
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_thigh_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_hip_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_hip_roll_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_knee_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_thigh_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_hip_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_hip_roll_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_knee_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_thigh_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_hip_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_hip_roll_bracket_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_knee_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_hip_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_hip_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_hip_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_hip_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_hip_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_hip_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_hip_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_hip_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_hip_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_hip_pitch",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_knee",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_hip_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_hip_roll",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_hip_pitch",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_knee",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_hip_yaw",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_hip_roll",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_hip_pitch",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_knee",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_hip_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "duck_leg",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_hip_roll",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_pad_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_follower_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_driver_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_pad_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_follower_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_driver_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_pad_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_spring_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_follower_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_driver_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_driver",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_spring_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_follower",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_driver",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_spring_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_follower",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_driver",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_coupler",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_spring_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_follower",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_driver_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_coupler_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_coupler_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_spring_link_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_follower_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_driver_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_coupler_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_coupler_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_spring_link_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_follower_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_driver_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_coupler_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_coupler_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_spring_link_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "robotiq_2f85",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_follower_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "wrist_flex_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "lower_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "upper_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "elbow_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "wrist_roll_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "wrist_flex_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "lower_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "upper_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "elbow_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "wrist_roll_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "wrist_flex_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "lower_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "upper_arm_link_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "elbow_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "wrist_roll_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "lower_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "wrist",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "gripper",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "moving_jaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "upper_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "lower_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "wrist",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "gripper",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "moving_jaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "upper_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "lower_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "wrist",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "gripper",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "moving_jaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "upper_arm",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "elbow_flex",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "wrist_flex",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "wrist_roll",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "gripper",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "shoulder_lift",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "elbow_flex",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "wrist_flex",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "wrist_roll",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "gripper",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "shoulder_lift",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "elbow_flex",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "wrist_flex",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "wrist_roll",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "gripper",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "so101",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "shoulder_lift",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_shoulder_roll_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_wrist_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_shoulder_pitch_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "left_shoulder_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_wrist_yaw_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_shoulder_roll_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_wrist_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_shoulder_pitch_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "left_shoulder_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_wrist_yaw_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_shoulder_roll_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_wrist_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_shoulder_pitch_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "left_shoulder_pitch_structure_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_wrist_yaw_motor_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_shoulder_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_wrist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "waist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "torso_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_wrist_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_shoulder_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_wrist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "waist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "torso_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_wrist_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_shoulder_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_wrist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "waist_roll_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "torso_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_wrist_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_shoulder_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_wrist_roll_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "waist_roll_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "waist_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_wrist_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_shoulder_pitch_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_wrist_roll_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "waist_roll_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "waist_pitch_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_wrist_pitch_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_shoulder_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_wrist_roll_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "waist_roll_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "waist_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "g1",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_wrist_pitch_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "FR_thigh_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "RL_foot_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "RL_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "RL_thigh_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "RR_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "FR_thigh_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "RL_foot_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "RL_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "RL_thigh_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "RR_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "FR_thigh_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "RL_foot_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "RL_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "RL_thigh_motor_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "RR_abduction_motor_flange_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "RL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "RR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "FL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "RL_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "FR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "RL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "RR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "FL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "RL_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "FR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "RL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "RR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "FL_calf",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "RL_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "FR_hip",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "RL_calf_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "RR_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "FL_calf_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "RL_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "FR_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "RL_calf_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "RR_hip_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "FL_calf_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "RL_hip_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "FR_hip_joint",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "RL_calf_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "RR_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "FL_calf_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "RL_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "go2",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "FR_hip_joint",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "jet_left_duct_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "speaker_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "head_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "head_yaw_bearing_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_hip_yaw_plate_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "jet_left_duct_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "speaker_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "head_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "head_yaw_bearing_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_hip_yaw_plate_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "jet_left_duct_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "speaker_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "head_pitch_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "head_yaw_bearing_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_hip_yaw_plate_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "right_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "jet_right_nacelle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "right_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "jet_right_nacelle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "right_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "jet_right_nacelle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "head_roll",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "right_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "jet_right_tilt",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "head_roll",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "right_ankle",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "jet_right_tilt",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "head_roll",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "right_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck_jetpack",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "jet_right_tilt",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "head_electronics_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "head_roll_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "neck_pitch_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "neck_plate_left_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 1,
+      "target": "right_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "head_electronics_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "head_roll_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "neck_pitch_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "neck_plate_left_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 3,
+      "target": "right_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "head_electronics_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "head_roll_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "neck_pitch_case_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "neck_plate_left_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "part_offset",
+      "severity": 10,
+      "target": "right_hip_roll_horn_visual",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "head_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 1,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "head_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 3,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "head_yaw_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "head_pitch_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_knee_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "left_ankle_link",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "anchor_shift",
+      "severity": 10,
+      "target": "head",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": true
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "head_pitch",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_knee",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 5,
+      "target": "head_roll",
+      "compile": false,
+      "joint": false,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "head_pitch",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_knee",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 15,
+      "target": "head_roll",
+      "compile": false,
+      "joint": true,
+      "sign": false,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "head_yaw",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "head_pitch",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_knee",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "left_ankle",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    },
+    {
+      "design": "microduck",
+      "fault": "axis_tilt",
+      "severity": 180,
+      "target": "head_roll",
+      "compile": false,
+      "joint": false,
+      "sign": true,
+      "geometry": false
+    }
+  ]
+}

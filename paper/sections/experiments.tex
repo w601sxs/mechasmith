@@ -37,8 +37,7 @@ Extend \code{collect\_results.py} to run it.}
 
 \subsection{Which checks see authoring faults?}
 \label{sec:detect}
-\planned{Run \code{paper/experiments/checker/detect.py} on all eight designs and report its
-table here.} An independent checker (\cref{app:checker}) reads only the exported MJCF and uses
+An independent checker (\cref{app:checker}) reads only the exported MJCF and uses
 exact mesh geometry rather than MuJoCo's convex hulls. We inject three kinds of fault into each
 design's exported model: a part moved off its mount, a joint moved with its subtree, and a joint
 axis tilted or flipped, at three severities and several random targets each. We then record
@@ -48,6 +47,24 @@ the checker's geometry tests. That joint metric folds the axis angle into $[0,\p
 50\,mm of axis offset, so by construction it cannot see a flipped joint, and it misses joint
 shifts of a few millimetres that matter for an actuated robot. \ms cannot express any of these
 faults.
+
+\begin{table}[t]
+\caption{Share of injected faults each check catches, over seven designs (five random targets
+per design, fault and size; the quadrotor has no joints or non-root parts and is left out).}
+\label{tab:detect}
+\centering\small
+\input{generated/table_detect}
+\end{table}
+
+\Cref{tab:detect} has the results. MuJoCo compiled every one of the 315 faulty models, so
+hand-written MJCF gets no signal at all from its compiler. The joint metric caught every
+15\textdegree{} tilt and nothing else: it passed every flipped axis, every 5\textdegree{} tilt
+and every joint moved by up to 10\,mm. The geometry tests caught 60--77\% of moved joints and
+43--54\% of moved parts; the rest moved within clearance or into a part of the same body, where a
+gap or overlap check cannot see them (on \code{g1}, whose bodies hold several touching parts,
+only 3 of 15 moved parts were caught). No single check covers the grid, and the 5\textdegree{}
+tilt escapes all of them, which is the case for faults that are impossible to write rather than
+caught after the fact.
 
 \subsection{Q2: Coding agents designing robots}
 \label{sec:agents}
